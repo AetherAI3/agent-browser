@@ -1,0 +1,55 @@
+name: Feature request
+description: Propose one bounded capability that preserves the current authority model.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Start with the user problem and current API contract. A v0.1 request must not widen the
+        listener, add arbitrary execution, import credentials, or silently weaken containment.
+  - type: textarea
+    id: use_case
+    attributes:
+      label: Use case
+      description: Who needs this, and what cannot be done with the current contract?
+    validations:
+      required: true
+  - type: textarea
+    id: current_contract
+    attributes:
+      label: Current contract
+      description: Link the relevant API, architecture, or security section.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Proposed outcome
+      description: Describe observable behavior, not an internal implementation plan.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State what remains intentionally outside scope.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: List deterministic success, denial, cleanup, and documentation checks.
+    validations:
+      required: true
+  - type: checkboxes
+    id: boundary
+    attributes:
+      label: Boundary acknowledgement
+      options:
+        - label: This request preserves loopback defaults and the documented authority boundary.
+          required: true
+        - label: This request is separable from the v0.1 release candidate.
+          required: true

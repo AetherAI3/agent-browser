@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Aether Browser is self-hosted Chromium for AI agents with API control, structured state, a live noVNC view, and human takeover.">
+    <meta property="og:title" content="Aether Browser — See what your agent sees.">
+    <meta property="og:description" content="Self-hosted Chromium · API control · Live human takeover">
+    <meta property="og:url" content="https://aetherai3.github.io/aetherbrowser/">
+    <meta property="og:image" content="https://aetherai3.github.io/aetherbrowser/assets/social-preview.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://aetherai3.github.io/aetherbrowser/assets/social-preview.png">
+    <title>Aether Browser — See what your agent sees.</title>
+    <style>
+      :root { color-scheme: light; --ink: #0d2444; --aqua: #22dbe4; --blue: #2789bd; --green: #83d174; --paper: #f7f4e8; }
+      * { box-sizing: border-box; }
+      body { margin: 0; color: var(--ink); background: radial-gradient(circle at 50% 0, #fff 0, var(--paper) 55%, #d7e7df 100%); font: 17px/1.6 system-ui, sans-serif; }
+      main { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 52px 0 72px; }
+      .hero { text-align: center; }
+      .logo { width: min(430px, 88vw); border: 8px solid #0d0d0d; box-shadow: 14px 14px 0 rgba(13, 36, 68, .18); }
+      h1 { margin: 28px 0 0; font-size: clamp(3rem, 9vw, 6.4rem); line-height: .95; letter-spacing: -.07em; }
+      .tagline { margin: 18px auto 8px; font-size: clamp(1.35rem, 3vw, 2rem); font-weight: 750; }
+      .lede { max-width: 760px; margin: 0 auto; color: #29445f; }
+      .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 28px 0 44px; }
+      .button { padding: 11px 17px; border: 3px solid var(--ink); color: var(--ink); background: white; font-weight: 800; text-decoration: none; box-shadow: 5px 5px 0 var(--aqua); }
+      .button.primary { color: white; background: var(--ink); }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin: 34px 0; }
+      .card { padding: 22px; border: 3px solid var(--ink); background: rgba(255,255,255,.84); }
+      .card h2 { margin: 0 0 8px; font-size: 1.15rem; }
+      pre { overflow-x: auto; padding: 20px; border: 3px solid var(--ink); color: #e9ffff; background: #071b33; box-shadow: 8px 8px 0 var(--green); }
+      code { font: .92em ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .boundary { padding: 20px 24px; border-left: 8px solid var(--blue); background: white; }
+      footer { margin-top: 46px; text-align: center; font-size: .95rem; color: #40566a; }
+      footer a { color: inherit; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <img class="logo" src="assets/aether-browser-logo.jpg" alt="Pixel-art computer displaying a globe and pointer, the Aether Browser logo">
+        <h1>Aether Browser</h1>
+        <p class="tagline">See what your agent sees.</p>
+        <p class="lede">Run one headed Chromium session on infrastructure you control. Agents use a bounded JSON API while a human watches or takes over the same local display through noVNC.</p>
+        <nav class="actions" aria-label="Project links">
+          <a class="button primary" href="https://github.com/AetherAI3/aetherbrowser#quickstart">Start locally</a>
+          <a class="button" href="API.md">Read the API</a>
+          <a class="button" href="SECURITY.md">Security model</a>
+          <a class="button" href="RELEASE_EVIDENCE.md">Release evidence</a>
+        </nav>
+      </section>
+
+      <section class="grid" aria-label="Core capabilities">
+        <article class="card"><h2>API control</h2><p>Create, navigate, inspect, click, type, scroll, press, and end through closed request models.</p></article>
+        <article class="card"><h2>Structured state</h2><p>Use bounded text and accessibility data before spending a vision step on a PNG snapshot.</p></article>
+        <article class="card"><h2>Shared live view</h2><p>Watch the exact headed session through numeric-loopback noVNC, with local human takeover.</p></article>
+        <article class="card"><h2>Narrow boundary</h2><p>No shell, arbitrary JavaScript, raw DevTools, credential import, or wildcard listener.</p></article>
+      </section>
+
+      <h2>One-command local start</h2>
+      <pre><code>docker compose up --build
+
+# API health
+curl -fsS http://127.0.0.1:8092/browser/health
+
+# live browser view
+http://127.0.0.1:6080/vnc.html</code></pre>
+
+      <p class="boundary"><strong>Release-candidate boundary:</strong> Aether Browser is self-hosted software, not a hosted browser service. The v0.1 noVNC surface is unauthenticated and must remain on numeric loopback. Review the security model before changing the deployment shape.</p>
+
+      <footer>
+        <p><strong>Self-hosted Chromium · API control · Live human takeover</strong></p>
+        <p><a href="https://github.com/AetherAI3/aetherbrowser/blob/main/LICENSE">Apache-2.0</a> · <a href="https://github.com/AetherAI3/aetherbrowser/blob/main/CONTRIBUTING.md">Contributing</a> · <a href="https://github.com/AetherAI3/aetherbrowser/blob/main/SECURITY.md">Report a vulnerability privately</a></p>
+      </footer>
+    </main>
+  </body>
+</html>
