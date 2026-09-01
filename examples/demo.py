@@ -4,12 +4,43 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
+
+
+def validate_api_base(value: str) -> str:
+    """Return a canonical HTTP origin for an explicit numeric-loopback listener."""
+
+    message = "--api-base must be an HTTP numeric-loopback root origin with an explicit port"
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        port = parsed.port
+        address = ipaddress.ip_address(parsed.hostname or "")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(message) from exc
+
+    if (
+        parsed.scheme != "http"
+        or not address.is_loopback
+        or getattr(address, "ipv4_mapped", None) is not None
+        or getattr(address, "scope_id", None) is not None
+        or parsed.username is not None
+        or parsed.password is not None
+        or port is None
+        or parsed.path not in {"", "/"}
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError(message)
+
+    host = f"[{address.compressed}]" if address.version == 6 else address.compressed
+    return f"http://{host}:{port}"
 
 
 def request_json(
@@ -19,6 +50,7 @@ def request_json(
     body: dict[str, object] | None = None,
     token: str | None = None,
 ) -> dict[str, Any]:
+    api_origin = validate_api_base(api_base)
     headers = {"Accept": "application/json"}
     data = None
     method = "GET"
@@ -29,20 +61,21 @@ def request_json(
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    request = urllib.request.Request(
-        api_base.rstrip("/") + path,
+    # The URL origin is canonicalized above without DNS resolution or userinfo.
+    request = urllib.request.Request(  # noqa: S310
+        api_origin + path,
         data=data,
         headers=headers,
         method=method,
     )
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
             return json.load(response)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         raise RuntimeError(f"{path} returned HTTP {exc.code}: {detail}") from exc
     except urllib.error.URLError as exc:
-        raise RuntimeError(f"could not reach {api_base}: {exc.reason}") from exc
+        raise RuntimeError(f"could not reach {api_origin}: {exc.reason}") from exc
 
 
 def print_result(label: str, payload: dict[str, Any]) -> None:
