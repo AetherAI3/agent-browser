@@ -66,7 +66,12 @@ still private-RC work, so this README treats them as contracts—not as complete
 
 ## Quick start
 
-The current Python package requires **Python 3.11+**, an installed Chrome channel usable by
+> [!NOTE]
+> This is the integrated RC launch shape. On the exact docs-only commit in this pull request,
+> the required security modules have not merged into `main` yet, so the command is not presented
+> as runnable proof. Use it after security integration lands and exact-main validation is green.
+
+The integrated Python package requires **Python 3.11+**, an installed Chrome channel usable by
 Patchright, and—on Linux—an active headed display. The package does not itself install or start
 Xvfb, x11vnc, noVNC, or websockify.
 
@@ -77,9 +82,10 @@ python -m pip install -e .
 python -m uvicorn aether_browser.main:app --host 127.0.0.1 --port 8092
 ```
 
-This is the current application entry point and loopback default. The security lane is adding
-the fail-closed authority and navigation-policy wiring required for the RC; until that work is
-merged, treat this command as development-only and keep both API and noVNC on loopback.
+This is the intended application entry point and loopback default after convergence. The
+security lane is adding the fail-closed authority and navigation-policy wiring required for the
+RC; until that work is merged, keep both API and noVNC on loopback and do not treat this command
+as a completed quick-start proof.
 
 | Setting | Current default |
 |---|---:|
