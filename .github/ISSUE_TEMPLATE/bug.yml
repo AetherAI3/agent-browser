@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible Aether Browser defect without sensitive data.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Do not include credentials, private URLs, page content,
+        host details, screenshots with personal data, or vulnerability details. Use GitHub private
+        vulnerability reporting for suspected security issues.
+  - type: input
+    id: version
+    attributes:
+      label: Version or exact commit
+      description: Provide the tag or full commit SHA you tested.
+      placeholder: v0.1.0-rc.1 or a 40-character commit
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment shape
+      options:
+        - Linux Docker Compose quickstart
+        - Rootless Podman
+        - Source checkout
+        - Other authorized local setup
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal reproduction
+      description: Use a disposable environment and public, deterministic test data.
+      placeholder: Commands, sanitized request bodies, and the smallest sequence that reproduces the issue.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include bounded, sanitized logs only when they are needed.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed secrets, private infrastructure details, personal data, and private page content.
+          required: true
+        - label: This is not a vulnerability report; security findings will use the private reporting flow.
+          required: true

@@ -1,225 +1,196 @@
 <p align="center">
-  <img
-    src="assets/aether-browser-logo.jpg"
-    alt="Pixel-art computer displaying a globe and pointer, the Aether Browser logo"
-    width="520"
-  >
+  <img src="assets/aether-browser-logo.jpg" alt="Pixel-art computer displaying a globe and pointer, the Aether Browser logo" width="520">
 </p>
 
 <h1 align="center">Aether Browser</h1>
-
-<p align="center"><strong>See what your agent sees.</strong></p>
+<h2 align="center">See what your agent sees.</h2>
 
 <p align="center">
-  Self-hosted, headed Chrome for AI agents.<br>
-  Control one session through a small JSON API, then observe or take over that same display locally.
+  Self-hosted Chrome for AI agents. Control it through an API and watch or take over the
+  exact same browser session through noVNC.
 </p>
 
 <p align="center">
-  <code>PRIVATE RC · BUILD IN PROGRESS</code>&nbsp;&nbsp;
-  <code>PYTHON 3.11+</code>&nbsp;&nbsp;
-  <code>APACHE-2.0</code>&nbsp;&nbsp;
-  <code>SELF-HOSTED</code>
+  <a href="https://github.com/AetherAI3/aetherbrowser/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/AetherAI3/aetherbrowser/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-0b7285"></a>
+  <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ed">
+  <img alt="Self-hosted" src="https://img.shields.io/badge/runtime-self--hosted-2f9e44">
 </p>
 
 <p align="center">
-  <a href="#quick-start">Quick start</a> ·
-  <a href="docs/API.md">API contract</a> ·
-  <a href="docs/ARCHITECTURE.md">Architecture</a> ·
-  <a href="#safety-boundary">Safety boundary</a> ·
-  <a href="#release-status">Release status</a> ·
-  <a href="LICENSE">License</a>
+  <a href="#quickstart">Quickstart</a> ·
+  <a href="docs/API.md">API</a> ·
+  <a href="docs/SECURITY.md">Security model</a> ·
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="docs/RELEASE_EVIDENCE.md">Release status</a>
 </p>
-
-## Release status
 
 > [!IMPORTANT]
-> **Aether Browser v0.1.0 is a private release-candidate build in progress.** This
-> repository is not approved for public release and is not presented as production ready.
-> Runtime, API, authority, navigation, and egress boundaries are present. Dedicated-runner
-> evidence, container acceptance, exact-main CI, and a real demo remain unclaimed until they
-> are independently verified.
+> **Private v0.1.0 release-candidate work is in progress.** The repository is not approved for
+> public release, and Aether Browser is not presented as a hosted service. Exact-main container,
+> dedicated-runner, acceptance, and demo evidence must be recorded before the RC is complete.
 
-## One browser, two views
+### Exact-release demo
 
-Aether Browser is built around a simple idea: the agent and the human should share the exact
-same browser session.
+The demo will appear here only after it is captured from the exact tested release commit. No
+mock or earlier-build media is substituted. The capture checklist and currently unfilled proof
+fields are in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md).
 
-- The **agent** works through a deliberately closed HTTP API.
-- The **human** observes or takes over through a loopback-only noVNC view.
-- Both meet at one headed Chrome instance owned by one bounded session.
-- Structured text and accessibility state come before pixels; screenshots remain available
-  when visual context is necessary.
+## Quickstart
 
-The checked-in runtime models headed Chrome, structured snapshots, bounded actions,
-single-session ownership, fail-closed authority, and pinned browser egress. Chromium is forced
-to disable non-proxied WebRTC UDP so WebRTC cannot bypass the TCP proxy boundary. noVNC host
-integration and full private-RC acceptance still require exact-main proof.
-
-| Surface | Focused v0.1 behavior | Evidence in this checkout |
-|---|---|---|
-| Browser runtime | Headed Chrome through Patchright, with one owned page and a temporary profile | Runtime source |
-| Agent state | URL, title, readable text, bounded accessibility nodes, viewport data, and PNG snapshots | Runtime source + [API contract](docs/API.md) |
-| Interaction | `click`, `type`, `scroll`, and `press`; selector-first with bounded coordinate fallback | Runtime source + [API contract](docs/API.md) |
-| Session lifecycle | One UUID session, explicit states, vision budget, expiry, and idempotent end | Runtime source + [architecture contract](docs/ARCHITECTURE.md) |
-| Human view | The same headed display exposed locally through noVNC | Architecture contract; integration proof pending |
-| Authority and navigation | Observer/controller roles plus HTTP(S), redirect, address, and pinned-egress checks | Source + security tests |
-
-## Quick start
-
-> [!NOTE]
-> This local command exercises the loopback application shape. It does not start Chrome's Linux
-> display services or constitute container, noVNC, or exact-main release proof.
-
-The integrated Python package requires **Python 3.11+**, an installed Chrome channel usable by
-Patchright, and—on Linux—an active headed display. The package does not itself install or start
-Xvfb, x11vnc, noVNC, or websockify.
+The supported one-command quickstart uses **Docker Engine on Linux** with Docker Compose v2.
+It builds the source checkout, starts Xvfb, x11vnc, noVNC, the API, and one headed Chromium
+runtime, and binds both user-facing listeners to the host's numeric loopback interface.
 
 ```bash
-python3.11 -m venv .venv
-. .venv/bin/activate
-python -m pip install -e .
-python -m aether_browser.main
+docker compose up --build
 ```
 
-Keep both API and noVNC listeners on numeric loopback. Named `localhost`, wildcard binds, and
-direct non-loopback binds are rejected so DNS, container, or interface ambiguity cannot silently
-broaden the authority boundary. The supported module launcher validates and owns the Uvicorn bind
-and disables proxy-header interpretation; do not bypass it with a raw Uvicorn CLI invocation.
-
-| Setting | Current default |
-|---|---:|
-| API | `127.0.0.1:8092` |
-| noVNC view URL | `http://127.0.0.1:6080/vnc.html` |
-| Idle timeout | `300` seconds |
-| Absolute lifetime | `3,600` seconds |
-| Maximum default vision budget | `25` snapshots |
-
-After the integrated runtime is healthy, the smallest local contract check is:
+Once the health endpoint responds, open the live browser view at
+[`http://127.0.0.1:6080/vnc.html`](http://127.0.0.1:6080/vnc.html) and check the API from another
+terminal:
 
 ```bash
-curl http://127.0.0.1:8092/browser/health
+curl -fsS http://127.0.0.1:8092/browser/health | jq .
 ```
 
-Strict loopback local mode may run without bearer tokens only while remote mode is disabled and
-both listeners remain numeric-loopback-bound. Authenticated local mode may use distinct observer
-and controller tokens.
+The first build downloads the pinned Python environment and Patchright browser payload, so it
+can take several minutes. Compose uses Linux host networking to keep the unauthenticated v0.1
+noVNC surface on numeric loopback; Docker Desktop and remote-host deployment are not part of
+this quickstart contract. Stop the foreground process with `Ctrl+C`.
 
-### Authenticated remote API
+## Three-command API example
 
-v0.1 never binds the API directly to a remote interface. Remote clients must terminate HTTPS at
-a trusted proxy on the same host, while Aether Browser continues to listen on numeric loopback.
-The deployment must set all of the following or startup fails closed:
+With the Compose runtime healthy and `curl` plus `jq` installed, these three commands create a
+session, navigate, and inspect structured state. Local loopback mode intentionally needs no
+bearer token; see the [authority contract](docs/API.md#transport-and-authority) before changing
+that deployment shape.
 
-- `AETHER_BROWSER_REMOTE_MODE=1`
-- `AETHER_BROWSER_REVERSE_PROXY_EXPOSED=1`
-- a numeric-loopback `AETHER_BROWSER_API_BIND` (normally `127.0.0.1`)
-- a non-loopback `AETHER_BROWSER_API_HOST`
-- `AETHER_BROWSER_TRUSTED_PROXY_CIDR` as one exact loopback `/32` or `/128`
-- `AETHER_BROWSER_TRUSTED_PROXY_SCHEME=https`
-- distinct strong `AETHER_BROWSER_OBSERVER_TOKEN` and
-  `AETHER_BROWSER_CONTROLLER_TOKEN` values
-- `AETHER_BROWSER_TEST_MODE=0` and no `AETHER_BROWSER_TEST_ORIGINS`
+```bash
+SESSION_ID="$(curl -fsS -X POST http://127.0.0.1:8092/browser/session/create -H 'Content-Type: application/json' -d '{"api_version":"v1"}' | jq -er '.session_id')"
+curl -fsS -X POST http://127.0.0.1:8092/browser/navigate -H 'Content-Type: application/json' -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\",\"url\":\"https://example.com\"}" | jq '{status, final_url, title, readable_text}'
+curl -fsS -X POST http://127.0.0.1:8092/browser/snapshot -H 'Content-Type: application/json' -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\"}" | jq '{status, url, title, sequence, vision_steps_remaining, screenshot_base64_chars: (.screenshot_base64 | length)}'
+```
 
-The proxy must strip `Forwarded`, every `X-Forwarded-*` header, `X-Real-IP`, and
-`X-Original-Host`; Aether Browser rejects them and validates the raw peer plus Host authority.
-Never proxy port 6080 or the noVNC paths. See the
-[transport and authority contract](docs/API.md#transport-and-authority).
+When finished, release the owned browser resources:
 
-Container gateway integration for this proxy-only contract remains pending. Container
-acceptance must use an isolated namespace/gateway or an exec-based probe; it must not make the
-API or noVNC listener non-loopback merely to make a host-side test reachable.
+```bash
+curl -fsS -X POST http://127.0.0.1:8092/browser/session/end -H 'Content-Type: application/json' -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\"}" | jq .
+```
 
-## API surface
+The same flow is available as [`examples/curl.sh`](examples/curl.sh).
 
-Every payload carries `api_version: "v1"`, unknown fields are rejected, and session-scoped
-payloads keep the UUID explicit.
+## What happened
 
-| Route | Observer | Controller | Purpose |
-|---|:---:|:---:|---|
-| `GET /browser/health` | ✓ | ✓ | Read bounded runtime health |
-| `POST /browser/session/create` | — | ✓ | Create the single owned session |
-| `POST /browser/navigate` | — | ✓ | Navigate to an allowed HTTP(S) destination |
-| `POST /browser/snapshot` | ✓ | ✓ | Consume one vision step and return structured state + PNG |
-| `POST /browser/interact` | — | ✓ | Apply one bounded interaction |
-| `POST /browser/session/end` | — | ✓ | End and clean up idempotently |
+1. `session/create` started one headed Chrome session and returned its UUID plus the local noVNC
+   view URL.
+2. `navigate` validated the destination, pinned allowed addresses, and changed the page shown in
+   the shared display.
+3. `snapshot` returned bounded text, accessibility state, viewport metadata, sequence counters,
+   and a PNG of that same page.
+4. The human view and API did not create competing browsers: they met at one owned session.
 
-Request limits, response shapes, stable error codes, and authority semantics live in
+## Why Aether Browser
+
+- **One session, two participants.** Agents act through JSON while a human can watch and take
+  over the exact display locally.
+- **Structure before pixels.** Readable text and a bounded accessibility representation are
+  available before a client spends a vision step on a screenshot.
+- **A small control surface.** The v0.1 API exposes explicit browser actions rather than a shell,
+  arbitrary JavaScript, or raw DevTools access.
+- **Model-agnostic and self-hosted.** Bring the agent framework you already use and keep the
+  browser runtime on infrastructure you control.
+
+## Current capabilities
+
+| Capability | v0.1 contract |
+|---|---|
+| Browser | One headed Chromium session launched through Patchright |
+| State | URL, title, readable text, bounded accessibility nodes, viewport, and PNG snapshot |
+| Actions | Navigate, click, type, scroll, and allowlisted key presses |
+| Human view | The same Xvfb display through loopback-only x11vnc and noVNC |
+| Ownership | One explicit UUID session with expiry, vision budget, and idempotent cleanup |
+| Authority | Observer/controller separation when authenticated; strict local loopback mode otherwise |
+| Navigation | HTTP(S)-only validation across requested, redirected, and browser-initiated navigation |
+
+Request and response shapes, limits, and stable error codes are documented in
 [`docs/API.md`](docs/API.md).
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-    Agent["Agent client"] -->|closed JSON API| API["FastAPI"]
+    Agent["Agent client"] -->|bounded JSON API| API["FastAPI"]
     API --> Guard["authority + navigation policy"]
     Guard --> Session["single-session manager"]
-    Session --> Chrome["Patchright + headed Chrome"]
+    Session --> Chrome["Patchright + headed Chromium"]
     Chrome --> State["text · accessibility · PNG"]
     State --> Agent
-    Chrome --> Display["shared display"]
+    Chrome --> Display["shared Xvfb display"]
     Display -->|loopback noVNC| Human["Human observer / takeover"]
 ```
 
-The session manager owns browser state, timing, sequence, snapshot budget, temporary profile,
-and cleanup. Keeping the session ID explicit preserves a stable client contract without
-pretending v0.1 is a multi-worker pool. See the full
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) contract.
+The session manager owns the page, browser context, temporary profile, timers, counters, and
+cleanup. The API and the live view are different interfaces to that shared resource, not two
+independent automation paths. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-## Safety boundary
+## Security boundary
 
-The safety model is intentionally based on a smaller surface:
+- API and noVNC listen on numeric loopback by default; noVNC remains loopback-only in v0.1.
+- Remote API clients require a separately operated same-host HTTPS reverse proxy, an exact
+  trusted loopback peer, strict Host validation, and distinct strong observer/controller tokens.
+- Destination validation rejects credentials, unsupported schemes, blocked address classes,
+  unsafe redirects, and DNS rebinding. Browser egress is pinned through an owned TCP proxy.
+- Non-proxied WebRTC UDP is disabled so it cannot silently bypass the TCP egress boundary.
+- Inputs, outputs, interactions, timeouts, lifetimes, and screenshot budgets are bounded.
+- Cleanup converges on session end, expiry, launch failure, application shutdown, and process
+  failure.
 
-- API and noVNC defaults are loopback-only; noVNC stays loopback-only in v0.1.
-- Direct non-loopback API binding is rejected. Remote API use requires the complete trusted
-  same-host HTTPS proxy tuple and distinct strong observer/controller tokens.
-- Top-level HTTP(S) destinations and redirects must be revalidated against credential, scheme,
-  address-class, rebinding, and browser-initiated navigation rules.
-- Chromium disables non-proxied WebRTC UDP; routed HTTP(S) and WebSocket traffic remains subject
-  to the pinned TCP egress boundary.
-- URLs, selectors, input, text, accessibility trees, screenshots, coordinates, timeouts, and
-  vision steps are bounded.
-- The public API contains no arbitrary JavaScript, DevTools, upload, clipboard, download,
-  extension, shell, filesystem, credential, or cookie-import operation.
-- Ending, expiry, failure, and shutdown converge on owned-resource cleanup.
-
-These boundaries are implemented, but the release candidate must still prove its remaining
-container, dedicated-runner, exact-main, and acceptance gates before its status changes.
+The trust assumptions and residual risks are explicit in [`docs/SECURITY.md`](docs/SECURITY.md).
+Report vulnerabilities privately through [`SECURITY.md`](SECURITY.md); do not open a public
+security issue.
 
 ### Source recovery and exclusions
 
 The source-recovery rule is **reuse general browser behavior, not private domain code**.
 Lifecycle, structured-state, interaction, and cleanup patterns may be adapted from authorized
 references; ATS/trading integrations, broker or account selectors, order actions, secrets,
-private host details, and credential injection are excluded from the public core. A complete
-source-recovery and license report is still an RC deliverable and is not claimed by this README.
+and credential injection are excluded from the public core. Provenance status is tracked in
+[`docs/SOURCE-RECOVERY.md`](docs/SOURCE-RECOVERY.md).
 
-### Deliberate non-goals for v0.1
+## What it does not do
 
 - No hosted cloud service, cloud control plane, or production remote-hosting claim.
-- No bundled model, account system, dashboard, credential vault, or credential injection.
+- No bundled LLM, account system, dashboard, credential vault, or credential injection.
 - No CAPTCHA bypass, anti-detection guarantee, stealth claim, or proxy rotation.
-- No arbitrary JavaScript, shell, filesystem, upload, clipboard, or download API.
+- No arbitrary JavaScript, shell, filesystem, upload, clipboard, download, or raw CDP API.
 - No multi-session pool, ATS integration, trading integration, or brokerage behavior.
 
-## Development verification
+## Roadmap
 
-The repository's configured local checks are:
+Four intentionally separable contribution tracks are prepared for publication after the v0.1
+contract is frozen:
 
-```bash
-python -m pip install -e ".[dev]"
-python -m ruff check .
-python -m mypy src
-python -m pytest
-```
+1. TypeScript client for the current API contract.
+2. Python context-manager SDK.
+3. Multi-session worker pool with explicit isolation and capacity semantics.
+4. Session trace and recording export with clear privacy controls.
 
-Those commands describe the checked-in development toolchain; this README edit does not assert
-that exact-main CI, dedicated-runner, container, or end-to-end acceptance gates are green.
+These are roadmap candidates, not shipped features or fabricated issue links.
 
-## License
+## Contributing
 
-Aether-owned code in this repository is licensed under the
-[Apache License 2.0](LICENSE). Third-party components remain subject to their own licenses and
-distribution terms.
+Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), the
+[`Code of Conduct`](CODE_OF_CONDUCT.md), and the current [`API contract`](docs/API.md). Small,
+well-tested changes that preserve the narrow authority boundary are welcome once the repository
+is published. Security reports use the private process in [`SECURITY.md`](SECURITY.md).
+
+## License and third-party notices
+
+Aether-owned code is licensed under the [Apache License 2.0](LICENSE). Dependencies, browser
+payloads, system packages, fonts, and bundled web assets remain under their respective terms;
+see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). A source checkout that builds locally is
+the v0.1 distribution target until binary redistribution review is complete.
 
 <p align="center"><strong>Aether Browser</strong> · See what your agent sees.</p>
