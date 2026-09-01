@@ -1,0 +1,12 @@
+# Direct dependency lock for Aether Browser v0.1.0.
+# Regenerate and review transitive resolution before changing any pin.
+fastapi==0.141.1
+httpx==0.28.1
+mypy==2.3.1
+patchright==1.62.2
+pydantic==2.13.5
+pytest==9.1.1
+pytest-asyncio==1.4.0
+ruff==0.16.5
+setuptools==84.0.0
+uvicorn[standard]==0.52.4
