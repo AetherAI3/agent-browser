@@ -245,7 +245,9 @@ class InteractRequest(SessionRequest):
         if self.action is InteractionAction.CLICK:
             if self.target is None:
                 raise ValueError("click requires target")
-            if any(value is not None for value in (self.text, self.key, self.delta_x, self.delta_y)):
+            if any(
+                value is not None for value in (self.text, self.key, self.delta_x, self.delta_y)
+            ):
                 raise ValueError("click accepts only target")
         elif self.action is InteractionAction.TYPE:
             if self.target is None or self.text is None:
@@ -262,7 +264,9 @@ class InteractRequest(SessionRequest):
         elif self.action is InteractionAction.PRESS:
             if self.key is None:
                 raise ValueError("press requires an allowlisted key")
-            if any(value is not None for value in (self.target, self.text, self.delta_x, self.delta_y)):
+            if any(
+                value is not None for value in (self.target, self.text, self.delta_x, self.delta_y)
+            ):
                 raise ValueError("press accepts only key")
         return self
 
