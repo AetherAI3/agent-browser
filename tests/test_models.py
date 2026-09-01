@@ -11,9 +11,9 @@ from aether_browser.models import (
     CreateSessionRequest,
     CreateSessionResponse,
     HealthResponse,
-    InteractRequest,
     InteractionAction,
     InteractionTarget,
+    InteractRequest,
     NavigateRequest,
 )
 
