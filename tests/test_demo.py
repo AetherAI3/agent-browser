@@ -101,15 +101,11 @@ def test_request_json_ignores_inherited_proxy_settings(
         _FakeResponse(200, "OK", b'{"status":"ok"}'),
     )
 
-    assert demo.request_json("http://127.0.0.1:8092", "/browser/health") == {
-        "status": "ok"
-    }
+    assert demo.request_json("http://127.0.0.1:8092", "/browser/health") == {"status": "ok"}
     assert len(connections) == 1
     connection = connections[0]
     assert (connection.host, connection.port, connection.timeout) == ("127.0.0.1", 8092, 30)
-    assert connection.requests == [
-        ("GET", "/browser/health", None, {"Accept": "application/json"})
-    ]
+    assert connection.requests == [("GET", "/browser/health", None, {"Accept": "application/json"})]
     assert connection.closed
 
 
