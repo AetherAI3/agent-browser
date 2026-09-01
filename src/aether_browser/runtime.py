@@ -388,10 +388,32 @@ class PatchrightBrowserAdapter:
 
     async def close(self) -> None:
         if self._closing:
-            return
+            raise BrowserOperationError("Browser cleanup is already in progress.")
         self._closing = True
         self._ready = False
+        cleanup_task = asyncio.create_task(
+            self._close_owned_resources(),
+            name="aether-browser-adapter-cleanup",
+        )
+        try:
+            await asyncio.shield(cleanup_task)
+        except asyncio.CancelledError:
+            # Cleanup is an ownership boundary. Finish every bounded close attempt
+            # before propagating cancellation to the caller.
+            try:
+                await cleanup_task
+            except BrowserOperationError:
+                pass
+            raise
+        except BrowserOperationError:
+            raise
+        except Exception:
+            raise BrowserOperationError("Browser cleanup did not complete.") from None
+        finally:
+            self._closing = False
 
+    async def _close_owned_resources(self) -> None:
+        failures = 0
         tasks = tuple(self._event_tasks)
         for task in tasks:
             task.cancel()
@@ -399,21 +421,34 @@ class PatchrightBrowserAdapter:
             await asyncio.gather(*tasks, return_exceptions=True)
         self._event_tasks.clear()
 
-        await self._close_resource(self._page)
-        self._page = None
-        await self._close_resource(self._context)
-        self._context = None
-        await self._close_resource(self._browser)
-        self._browser = None
+        if self._page is not None:
+            if await self._close_resource(self._page):
+                self._page = None
+            else:
+                failures += 1
+        if self._context is not None:
+            if await self._close_resource(self._context):
+                self._context = None
+            else:
+                failures += 1
+        if self._browser is not None:
+            if await self._close_resource(self._browser):
+                self._browser = None
+            else:
+                failures += 1
         if self._patchright is not None:
             try:
                 async with asyncio.timeout(self._cleanup_timeout):
                     await self._patchright.stop()
-            except BaseException:
-                self._cleanup_failures += 1
-        self._patchright = None
-        self._closing = False
-        if self._cleanup_failures:
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                failures += 1
+            else:
+                self._patchright = None
+
+        self._cleanup_failures = failures
+        if failures:
             raise BrowserOperationError("Browser cleanup did not complete.")
 
     async def _extract_page_state(self, page: Any) -> BrowserPageState:
@@ -499,7 +534,9 @@ class PatchrightBrowserAdapter:
         try:
             async with asyncio.timeout(self._action_timeout):
                 await download.cancel()
-        except BaseException:
+        except asyncio.CancelledError:
+            raise
+        except Exception:
             self._crashed = True
             self._ready = False
 
@@ -507,7 +544,9 @@ class PatchrightBrowserAdapter:
         try:
             async with asyncio.timeout(self._cleanup_timeout):
                 await page.close()
-        except BaseException:
+        except asyncio.CancelledError:
+            raise
+        except Exception:
             self._cleanup_failures += 1
             self._crashed = True
             self._ready = False
@@ -548,14 +587,15 @@ class PatchrightBrowserAdapter:
             raise BrowserNotReadyError("The browser is not ready.") from None
         raise BrowserOperationError(message) from None
 
-    async def _close_resource(self, resource: Any | None) -> None:
-        if resource is None:
-            return
+    async def _close_resource(self, resource: Any) -> bool:
         try:
             async with asyncio.timeout(self._cleanup_timeout):
                 await resource.close()
-        except BaseException:
-            self._cleanup_failures += 1
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            return False
+        return True
 
 
 __all__ = [

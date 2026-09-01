@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from dataclasses import dataclass, field
 
@@ -317,4 +318,78 @@ async def test_close_releases_page_context_browser_and_patchright_manager() -> N
     assert context.closed
     assert browser.closed
     assert patchright.stopped
+    assert not adapter.is_ready
+
+
+@pytest.mark.asyncio
+async def test_close_attempts_every_resource_and_retains_a_failed_handle_for_retry() -> None:
+    from aether_browser.runtime import BrowserOperationError
+
+    class FailOnceClosable:
+        def __init__(self) -> None:
+            self.attempts = 0
+            self.closed = False
+
+        async def close(self) -> None:
+            self.attempts += 1
+            if self.attempts == 1:
+                raise RuntimeError("private close detail")
+            self.closed = True
+
+    adapter, page = launched_adapter()
+    context = FailOnceClosable()
+    browser = Closable()
+    patchright = Stoppable()
+    adapter._context = context
+    adapter._browser = browser
+    adapter._patchright = patchright
+
+    with pytest.raises(BrowserOperationError, match="Browser cleanup did not complete"):
+        await adapter.close()
+
+    assert page.closed
+    assert context.attempts == 1
+    assert adapter._context is context
+    assert browser.closed
+    assert patchright.stopped
+
+    await adapter.close()
+    assert context.attempts == 2
+    assert context.closed
+    assert adapter._context is None
+
+
+@pytest.mark.asyncio
+async def test_close_finishes_all_resource_attempts_before_propagating_cancellation() -> None:
+    class BlockingClosable:
+        def __init__(self) -> None:
+            self.started = asyncio.Event()
+            self.release = asyncio.Event()
+            self.closed = False
+
+        async def close(self) -> None:
+            self.started.set()
+            await self.release.wait()
+            self.closed = True
+
+    adapter, page = launched_adapter()
+    context = BlockingClosable()
+    browser = Closable()
+    patchright = Stoppable()
+    adapter._context = context
+    adapter._browser = browser
+    adapter._patchright = patchright
+
+    closing = asyncio.create_task(adapter.close())
+    await context.started.wait()
+    closing.cancel()
+    context.release.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await closing
+    assert page.closed
+    assert context.closed
+    assert browser.closed
+    assert patchright.stopped
+    assert adapter._context is None
     assert not adapter.is_ready

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import math
 import shutil
 import tempfile
 import time
@@ -12,7 +13,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeVar
 from uuid import UUID, uuid4
 
 from aether_browser.models import InteractionAction, InteractRequest, SessionState
@@ -20,6 +21,7 @@ from aether_browser.runtime import (
     BrowserAdapter,
     BrowserLaunchError,
     BrowserNotReadyError,
+    BrowserOperationError,
     BrowserPageState,
     BrowserSnapshot,
 )
@@ -34,6 +36,7 @@ DEFAULT_VIEW_URL = "http://127.0.0.1:6080/vnc.html"
 AdapterFactory = Callable[[Path], BrowserAdapter | Awaitable[BrowserAdapter]]
 UtcClock = Callable[[], datetime]
 MonotonicClock = Callable[[], float]
+_OperationResult = TypeVar("_OperationResult")
 
 
 class SessionError(RuntimeError):
@@ -160,7 +163,7 @@ class SessionManager:
             cleanup_timeout_seconds,
             reaper_resolution_seconds,
         ):
-            if value <= 0:
+            if not math.isfinite(value) or value <= 0:
                 raise ValueError("session time bounds must be positive")
         if tombstone_limit < 1:
             raise ValueError("tombstone_limit must be positive")
@@ -267,8 +270,13 @@ class SessionManager:
             record = await self._active_record_locked(session_id)
             adapter = self._adapter(record)
             try:
-                page = await adapter.navigate(url)
+                page = await self._await_before_absolute_deadline_locked(
+                    record,
+                    lambda: adapter.navigate(url),
+                )
             except BaseException as error:
+                if record.state is SessionState.EXPIRED:
+                    raise
                 await self._handle_adapter_failure_locked(record, error)
                 raise
             timestamp = self._aware_now()
@@ -286,8 +294,13 @@ class SessionManager:
                 raise VisionBudgetExhaustedError("The snapshot budget is exhausted.")
             adapter = self._adapter(record)
             try:
-                snapshot = await adapter.snapshot()
+                snapshot = await self._await_before_absolute_deadline_locked(
+                    record,
+                    adapter.snapshot,
+                )
             except BaseException as error:
+                if record.state is SessionState.EXPIRED:
+                    raise
                 await self._handle_adapter_failure_locked(record, error)
                 raise
 
@@ -312,7 +325,8 @@ class SessionManager:
             selector = target.selector if target is not None else None
             x = target.x if target is not None else None
             y = target.y if target is not None else None
-            try:
+
+            async def apply_interaction() -> None:
                 if request.action is InteractionAction.CLICK:
                     await adapter.click(selector=selector, x=x, y=y)
                 elif request.action is InteractionAction.TYPE:
@@ -325,7 +339,12 @@ class SessionManager:
                     await adapter.press(request.key.value)
                 else:
                     raise AssertionError("closed interaction model produced an unknown action")
+
+            try:
+                await self._await_before_absolute_deadline_locked(record, apply_interaction)
             except BaseException as error:
+                if record.state is SessionState.EXPIRED:
+                    raise
                 await self._handle_adapter_failure_locked(record, error)
                 raise
 
@@ -392,7 +411,7 @@ class SessionManager:
 
     async def shutdown(self) -> None:
         async with self._lock:
-            if self._shutdown:
+            if self._shutdown and self._current is None:
                 return
             self._shutdown = True
             record = self._current
@@ -432,13 +451,22 @@ class SessionManager:
         return record
 
     async def _expire_if_needed_locked(self, record: _SessionRecord) -> bool:
-        if record is not self._current or record.state is not SessionState.ACTIVE:
+        if record is not self._current:
+            return False
+        if record.state is SessionState.EXPIRED:
+            await self._finish_expired_record_locked(record)
+            return True
+        if record.state is not SessionState.ACTIVE:
             return False
         now = self._monotonic_clock()
         idle_deadline = record.last_activity_monotonic + self._idle_timeout
         if now < idle_deadline and now < record.absolute_deadline_monotonic:
             return False
 
+        await self._finish_expired_record_locked(record)
+        return True
+
+    async def _finish_expired_record_locked(self, record: _SessionRecord) -> None:
         record.state = SessionState.EXPIRED
         self._last_state = SessionState.EXPIRED
         await self._cleanup_record_locked(record)
@@ -446,7 +474,29 @@ class SessionManager:
         self._remember_tombstone(record, ended_at)
         if self._current is record:
             self._current = None
-        return True
+
+    async def _await_before_absolute_deadline_locked(
+        self,
+        record: _SessionRecord,
+        operation: Callable[[], Awaitable[_OperationResult]],
+    ) -> _OperationResult:
+        remaining = record.absolute_deadline_monotonic - self._monotonic_clock()
+        if remaining <= 0:
+            await self._finish_expired_record_locked(record)
+            raise SessionExpiredError("Session expired.")
+        deadline_timeout = asyncio.timeout(remaining)
+        try:
+            async with deadline_timeout:
+                result = await operation()
+        except TimeoutError:
+            if not deadline_timeout.expired():
+                raise
+            await self._finish_expired_record_locked(record)
+            raise SessionExpiredError("Session expired.") from None
+        if self._monotonic_clock() >= record.absolute_deadline_monotonic:
+            await self._finish_expired_record_locked(record)
+            raise SessionExpiredError("Session expired.")
+        return result
 
     async def _fail_record_locked(self, record: _SessionRecord) -> None:
         record.state = SessionState.FAILED
@@ -469,38 +519,74 @@ class SessionManager:
             await self._fail_record_locked(record)
 
     async def _cleanup_record_locked(self, record: _SessionRecord) -> None:
+        cancelled: asyncio.CancelledError | None = None
+        failed = False
         expiry_task = record.expiry_task
         current_task = asyncio.current_task()
         if expiry_task is not None and expiry_task is not current_task:
             expiry_task.cancel()
-            await asyncio.gather(expiry_task, return_exceptions=True)
-        record.expiry_task = None
+            expiry_waiter = asyncio.gather(expiry_task, return_exceptions=True)
+            try:
+                await asyncio.shield(expiry_waiter)
+            except asyncio.CancelledError as error:
+                cancelled = error
+                await expiry_waiter
+            if expiry_task.done():
+                record.expiry_task = None
+        elif expiry_task is current_task:
+            record.expiry_task = None
 
         adapter = record.adapter
-        record.adapter = None
         if adapter is not None:
             try:
                 async with asyncio.timeout(self._cleanup_timeout):
                     await adapter.close()
-            except BaseException:
-                self._cleanup_failures += 1
-                self._cleanup_compromised = True
-        await self._remove_profile(record.profile_directory)
+            except asyncio.CancelledError as error:
+                cancelled = cancelled or error
+                failed = True
+            except Exception:
+                failed = True
+            else:
+                record.adapter = None
 
-    async def _remove_profile(self, profile_directory: Path) -> None:
+        profile_task = asyncio.create_task(
+            self._remove_profile(record.profile_directory),
+            name="aether-browser-profile-cleanup",
+        )
+        try:
+            profile_removed = await asyncio.shield(profile_task)
+        except asyncio.CancelledError as error:
+            cancelled = cancelled or error
+            try:
+                profile_removed = await profile_task
+            except asyncio.CancelledError:
+                profile_removed = False
+        if not profile_removed:
+            failed = True
+
+        if failed or cancelled is not None:
+            self._cleanup_failures += 1
+            self._cleanup_compromised = True
+            if cancelled is not None:
+                raise cancelled
+            raise BrowserOperationError("Browser cleanup did not complete.")
+
+        self._cleanup_failures = 0
+        self._cleanup_compromised = False
+
+    async def _remove_profile(self, profile_directory: Path) -> bool:
         for attempt in range(2):
             try:
                 async with asyncio.timeout(self._cleanup_timeout):
                     await asyncio.to_thread(shutil.rmtree, profile_directory)
-                return
+                return True
             except FileNotFoundError:
-                return
-            except BaseException:
+                return True
+            except Exception:
                 if attempt == 0:
                     await asyncio.sleep(0)
                     continue
-                self._cleanup_failures += 1
-                self._cleanup_compromised = True
+        return False
 
     async def _expiry_watch(self, session_id: UUID) -> None:
         try:
@@ -522,6 +608,8 @@ class SessionManager:
                     )
                 await asyncio.sleep(max(0.001, min(remaining, self._reaper_resolution)))
         except asyncio.CancelledError:
+            return
+        except BrowserOperationError:
             return
 
     def _remember_tombstone(self, record: _SessionRecord, ended_at: datetime) -> None:

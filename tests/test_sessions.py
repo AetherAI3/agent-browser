@@ -5,10 +5,10 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
-from fixtures.runtime_fakes import FakeAdapterFactory, FakeClock
+from fixtures.runtime_fakes import FakeAdapter, FakeAdapterFactory, FakeClock
 
 from aether_browser.models import InteractRequest
-from aether_browser.runtime import BrowserLaunchError, BrowserNotReadyError
+from aether_browser.runtime import BrowserLaunchError, BrowserNotReadyError, BrowserOperationError
 from aether_browser.sessions import (
     SessionCapacityError,
     SessionExpiredError,
@@ -214,6 +214,8 @@ async def test_end_is_idempotent_and_does_not_end_a_new_session(tmp_path: Path) 
     factory = FakeAdapterFactory()
     manager = build_manager(factory, FakeClock(), tmp_path)
     first = await manager.create(2)
+    first_adapter = factory.adapters[0]
+    first_profile = first_adapter.launched_profile
 
     ended = await manager.end(first.session_id)
     repeated = await manager.end(first.session_id)
@@ -223,6 +225,8 @@ async def test_end_is_idempotent_and_does_not_end_a_new_session(tmp_path: Path) 
     assert ended.status == "ended"
     assert repeated.status == old_again.status == "already_ended"
     assert repeated.ended_at == ended.ended_at
+    assert first_adapter.closed
+    assert first_profile is not None and not first_profile.exists()
     assert manager.active_session_id == second.session_id
     await manager.shutdown()
 
@@ -305,3 +309,346 @@ async def test_reaper_cleans_process_crash_without_a_followup_request(tmp_path: 
     assert factory.adapters[0].closed
     assert manager.active_session_id is None
     await manager.shutdown()
+
+
+class _FailOnceCloseAdapter(FakeAdapter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.close_attempts = 0
+
+    async def close(self) -> None:
+        self.close_attempts += 1
+        if self.close_attempts == 1:
+            raise RuntimeError("private cleanup detail")
+        await super().close()
+
+
+class _BlockingCloseAdapter(FakeAdapter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.close_started = asyncio.Event()
+        self.close_release = asyncio.Event()
+        self.close_attempts = 0
+
+    async def close(self) -> None:
+        self.close_attempts += 1
+        self.close_started.set()
+        await self.close_release.wait()
+        await super().close()
+
+
+class _DeadlineAdapter(FakeAdapter):
+    def __init__(self) -> None:
+        super().__init__()
+        self.operation_started = asyncio.Event()
+        self.operation_release = asyncio.Event()
+
+    async def _block(self) -> None:
+        self.operation_started.set()
+        await self.operation_release.wait()
+
+    async def navigate(self, url: str):
+        await self._block()
+        return await super().navigate(url)
+
+    async def snapshot(self):
+        await self._block()
+        return await super().snapshot()
+
+    async def click(
+        self,
+        *,
+        selector: str | None = None,
+        x: int | None = None,
+        y: int | None = None,
+    ) -> None:
+        await self._block()
+        await super().click(selector=selector, x=x, y=y)
+
+
+@pytest.mark.asyncio
+async def test_end_cleanup_failure_is_generic_retriable_and_does_not_report_success(
+    tmp_path: Path,
+) -> None:
+    adapter = _FailOnceCloseAdapter()
+    manager = build_manager(lambda _profile: adapter, FakeClock(), tmp_path)
+    created = await manager.create(2)
+
+    with pytest.raises(BrowserOperationError, match="Browser cleanup did not complete") as raised:
+        await manager.end(created.session_id)
+
+    assert "private cleanup detail" not in str(raised.value)
+    assert adapter.close_attempts == 1
+    assert manager.current_state.value == "ending"
+
+    ended = await manager.end(created.session_id)
+    assert ended.status == "ended"
+    assert adapter.close_attempts == 2
+    assert adapter.closed
+    await manager.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_shutdown_retries_a_failed_cleanup(tmp_path: Path) -> None:
+    adapter = _FailOnceCloseAdapter()
+    manager = build_manager(lambda _profile: adapter, FakeClock(), tmp_path)
+    await manager.create(2)
+
+    with pytest.raises(BrowserOperationError, match="Browser cleanup did not complete"):
+        await manager.shutdown()
+
+    assert adapter.close_attempts == 1
+    await manager.shutdown()
+    assert adapter.close_attempts == 2
+    assert adapter.closed
+
+
+@pytest.mark.asyncio
+async def test_cancelled_end_retains_cleanup_state_for_retry(tmp_path: Path) -> None:
+    adapter = _BlockingCloseAdapter()
+    manager = build_manager(lambda _profile: adapter, FakeClock(), tmp_path)
+    created = await manager.create(2)
+
+    ending = asyncio.create_task(manager.end(created.session_id))
+    await adapter.close_started.wait()
+    ending.cancel()
+    adapter.close_release.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await ending
+    assert manager.current_state.value == "ending"
+    assert adapter.close_attempts == 1
+
+    ended = await manager.end(created.session_id)
+    assert ended.status == "ended"
+    assert adapter.close_attempts == 2
+    assert adapter.closed
+    await manager.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_profile_cleanup_failure_is_retriable_and_blocks_success(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import aether_browser.sessions as sessions_module
+
+    factory = FakeAdapterFactory()
+    manager = build_manager(factory, FakeClock(), tmp_path)
+    created = await manager.create(2)
+    profile = factory.adapters[0].launched_profile
+    assert profile is not None
+    original_rmtree = sessions_module.shutil.rmtree
+    attempts = 0
+
+    def fail_first_cleanup(path: Path) -> None:
+        nonlocal attempts
+        attempts += 1
+        if attempts <= 2:
+            raise OSError("private profile detail")
+        original_rmtree(path)
+
+    monkeypatch.setattr(sessions_module.shutil, "rmtree", fail_first_cleanup)
+
+    with pytest.raises(BrowserOperationError, match="Browser cleanup did not complete") as raised:
+        await manager.end(created.session_id)
+
+    assert "private profile detail" not in str(raised.value)
+    assert profile.exists()
+    assert manager.current_state.value == "ending"
+
+    ended = await manager.end(created.session_id)
+    assert ended.status == "ended"
+    assert not profile.exists()
+    await manager.shutdown()
+
+
+@pytest.mark.parametrize("operation", ["navigate", "snapshot", "interact"])
+@pytest.mark.asyncio
+async def test_absolute_deadline_overrun_never_commits_success(
+    tmp_path: Path,
+    operation: str,
+) -> None:
+    adapter = _DeadlineAdapter()
+    clock = FakeClock()
+    manager = SessionManager(
+        lambda _profile: adapter,
+        idle_timeout_seconds=60.0,
+        absolute_lifetime_seconds=5.0,
+        reaper_resolution_seconds=60.0,
+        profile_root=tmp_path,
+        utc_clock=clock.utc_now,
+        monotonic_clock=clock.monotonic,
+    )
+    created = await manager.create(2)
+    profile = adapter.launched_profile
+
+    if operation == "navigate":
+        pending = asyncio.create_task(
+            manager.navigate(created.session_id, "https://example.com")
+        )
+    elif operation == "snapshot":
+        pending = asyncio.create_task(manager.snapshot(created.session_id))
+    else:
+        pending = asyncio.create_task(
+            manager.interact(
+                InteractRequest(
+                    session_id=created.session_id,
+                    action="click",
+                    target={"selector": "#submit"},
+                )
+            )
+        )
+
+    await adapter.operation_started.wait()
+    clock.advance(5.0)
+    adapter.operation_release.set()
+
+    with pytest.raises(SessionExpiredError):
+        await pending
+    assert adapter.closed
+    assert profile is not None and not profile.exists()
+    assert manager.active_session_id is None
+    await manager.shutdown()
+
+
+@pytest.mark.parametrize("value", ["", "true", " 1 ", "1 ", "yes"])
+def test_boolean_environment_settings_reject_noncanonical_values(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    from aether_browser.main import RuntimeSettings
+
+    monkeypatch.setenv("AETHER_BROWSER_TEST_MODE", value)
+    with pytest.raises(ValueError, match="must be exactly '0' or '1'"):
+        RuntimeSettings.from_environment()
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("AETHER_BROWSER_API_PORT", "0"),
+        ("AETHER_BROWSER_API_PORT", "not-a-port"),
+        ("AETHER_BROWSER_IDLE_TIMEOUT_SECONDS", "nan"),
+        ("AETHER_BROWSER_IDLE_TIMEOUT_SECONDS", " 5 "),
+        ("AETHER_BROWSER_ABSOLUTE_LIFETIME_SECONDS", "inf"),
+    ],
+)
+def test_numeric_environment_settings_fail_closed(
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    value: str,
+) -> None:
+    from aether_browser.main import RuntimeSettings
+
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError):
+        RuntimeSettings.from_environment()
+
+
+@pytest.mark.parametrize(
+    ("path", "payload"),
+    [
+        (
+            "/browser/navigate",
+            {
+                "api_version": "v1",
+                "session_id": str(uuid4()),
+                "url": "https://example.com",
+            },
+        ),
+        (
+            "/browser/interact",
+            {
+                "api_version": "v1",
+                "session_id": str(uuid4()),
+                "action": "click",
+                "target": {"selector": "#submit"},
+            },
+        ),
+        (
+            "/browser/session/end",
+            {"api_version": "v1", "session_id": str(uuid4())},
+        ),
+    ],
+)
+@pytest.mark.asyncio
+async def test_observer_authority_cannot_reach_mutating_routes(
+    path: str,
+    payload: dict[str, object],
+) -> None:
+    from httpx import ASGITransport, AsyncClient
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    from aether_browser.main import RequiredAuthority, RuntimeSettings, create_app
+
+    factory = FakeAdapterFactory()
+    required_levels: list[RequiredAuthority] = []
+
+    async def observer_authority(
+        _authorization: str | None,
+        required: RequiredAuthority,
+    ) -> None:
+        required_levels.append(required)
+        if required is RequiredAuthority.CONTROLLER:
+            raise StarletteHTTPException(status_code=403)
+
+    async def allow_navigation(_url: str) -> None:
+        return None
+
+    application = create_app(
+        adapter_factory=factory,
+        authority=observer_authority,
+        navigation_policy=allow_navigation,
+        settings=RuntimeSettings(),
+    )
+    transport = ASGITransport(app=application, raise_app_exceptions=False)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.post(path, json=payload)
+
+    assert response.status_code == 403
+    assert required_levels == [RequiredAuthority.CONTROLLER]
+    assert factory.adapters == []
+
+
+@pytest.mark.asyncio
+async def test_navigation_policy_denial_happens_before_the_adapter_call(tmp_path: Path) -> None:
+    from httpx import ASGITransport, AsyncClient
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+
+    from aether_browser.main import RuntimeSettings, create_app
+
+    factory = FakeAdapterFactory()
+    manager = build_manager(factory, FakeClock(), tmp_path)
+    created = await manager.create(2)
+    adapter = factory.adapters[0]
+    calls_before_request = list(adapter.calls)
+
+    async def allow_authority(_authorization: str | None, _required: object) -> None:
+        return None
+
+    async def deny_navigation(_url: str) -> None:
+        raise StarletteHTTPException(status_code=403)
+
+    application = create_app(
+        manager=manager,
+        authority=allow_authority,
+        navigation_policy=deny_navigation,
+        settings=RuntimeSettings(),
+    )
+    transport = ASGITransport(app=application, raise_app_exceptions=False)
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post(
+                "/browser/navigate",
+                json={
+                    "api_version": "v1",
+                    "session_id": str(created.session_id),
+                    "url": "https://blocked.invalid",
+                },
+            )
+    finally:
+        await manager.shutdown()
+
+    assert response.status_code == 403
+    assert adapter.calls == calls_before_request

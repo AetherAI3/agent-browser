@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import inspect
+import math
 import os
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -565,17 +566,26 @@ def _error_response(
 
 
 def _environment_flag(name: str) -> bool:
-    return os.getenv(name, "").strip() == "1"
+    value = os.getenv(name)
+    if value is None or value == "0":
+        return False
+    if value == "1":
+        return True
+    raise ValueError(f"{name} must be exactly '0' or '1'")
 
 
 def _bounded_int(value: str | None, default: int, minimum: int, maximum: int) -> int:
     if value is None:
         return default
+    if not value or value != value.strip():
+        raise ValueError("integer environment setting is malformed")
     try:
         parsed = int(value)
-    except ValueError:
-        return default
-    return max(minimum, min(maximum, parsed))
+    except (TypeError, ValueError):
+        raise ValueError("integer environment setting is malformed") from None
+    if not minimum <= parsed <= maximum:
+        raise ValueError("integer environment setting is outside the supported range")
+    return parsed
 
 
 def _bounded_float(
@@ -586,11 +596,15 @@ def _bounded_float(
 ) -> float:
     if value is None:
         return default
+    if not value or value != value.strip():
+        raise ValueError("numeric environment setting is malformed")
     try:
         parsed = float(value)
-    except ValueError:
-        return default
-    return max(minimum, min(maximum, parsed))
+    except (TypeError, ValueError):
+        raise ValueError("numeric environment setting is malformed") from None
+    if not math.isfinite(parsed) or not minimum <= parsed <= maximum:
+        raise ValueError("numeric environment setting is outside the supported range")
+    return parsed
 
 
 def _aware_timestamp(value: datetime) -> datetime:
