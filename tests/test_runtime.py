@@ -408,6 +408,7 @@ async def test_launch_installs_pinned_socks_only_configuration(
 ) -> None:
     operations: list[str] = []
     captured: dict[str, Any] = {}
+    monkeypatch.setenv("DISPLAY", ":99")
 
     class LaunchPage(FakePage):
         def on(self, _name: str, _handler: object) -> None:
