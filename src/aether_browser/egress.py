@@ -120,7 +120,7 @@ class PinnedSocks5Proxy:
             address = ipaddress.ip_address(listen_host)
         except ValueError:
             raise ValueError("SOCKS listener host must be a numeric loopback address") from None
-        if not address.is_loopback or address.ipv4_mapped is not None:
+        if not address.is_loopback or getattr(address, "ipv4_mapped", None) is not None:
             raise ValueError("SOCKS listener host must be a numeric loopback address")
         if not callable(connection_planner) or (dialer is not None and not callable(dialer)):
             raise ValueError("SOCKS callbacks must be callable")
