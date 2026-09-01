@@ -364,7 +364,7 @@ async def _await_resolution(
 
 
 class NavigationPolicy:
-    """Validate one URL at every top-level browser navigation boundary."""
+    """Validate one URL at each network-producing top-level browser boundary."""
 
     __slots__ = (
         "_resolver",

@@ -653,7 +653,7 @@ async def test_observer_authority_cannot_reach_mutating_routes(
         settings=RuntimeSettings(),
     )
     transport = ASGITransport(app=application, raise_app_exceptions=False)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
         response = await client.post(path, json=payload)
 
     assert response.status_code == 403
@@ -688,7 +688,7 @@ async def test_navigation_policy_denial_happens_before_the_adapter_call(tmp_path
     )
     transport = ASGITransport(app=application, raise_app_exceptions=False)
     try:
-        async with AsyncClient(transport=transport, base_url="http://test") as client:
+        async with AsyncClient(transport=transport, base_url="http://127.0.0.1") as client:
             response = await client.post(
                 "/browser/navigate",
                 json={

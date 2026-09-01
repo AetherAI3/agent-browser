@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import ipaddress
 from collections.abc import Awaitable, Callable
-from contextlib import suppress
 
 import pytest
 
@@ -36,9 +35,11 @@ def _domain_request(hostname: str, port: int) -> bytes:
 
 
 async def _close_client(writer: asyncio.StreamWriter) -> None:
-    with suppress(OSError):
-        writer.close()
+    writer.close()
+    try:
         await writer.wait_closed()
+    except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+        pass
 
 
 async def _echo_target(

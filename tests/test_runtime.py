@@ -151,8 +151,10 @@ class FakeWebSocketRoute:
     def __init__(self, url: str) -> None:
         self.url = url
         self.connected = False
+        self.connect_calls = 0
 
-    async def connect(self) -> None:
+    def connect_to_server(self) -> None:
+        self.connect_calls += 1
         self.connected = True
 
 
@@ -396,6 +398,8 @@ async def test_websocket_is_authorized_before_explicit_connection() -> None:
 
     assert allowed.connected
     assert not blocked.connected
+    assert allowed.connect_calls == 1
+    assert blocked.connect_calls == 0
     assert (await guard.connection_plan("socket.example.org", 443)).port == 443
     with pytest.raises(PolicyError):
         await guard.connection_plan("blocked.example.org", 80)
@@ -489,6 +493,7 @@ async def test_launch_installs_pinned_socks_only_configuration(
         assert "--host-resolver-rules=MAP * ~NOTFOUND" in args
         assert "--disable-quic" in args
         assert "--disable-http2" in args
+        assert "--force-webrtc-ip-handling-policy=disable_non_proxied_udp" in args
         assert any(str(value).startswith("--proxy-server=socks5://") for value in args)
         assert operations.index("route_web_socket") < operations.index("new_page")
     finally:

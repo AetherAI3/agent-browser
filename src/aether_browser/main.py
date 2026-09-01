@@ -221,9 +221,8 @@ class _LazySecurity:
     async def startup(self) -> None:
         """Validate the complete production boundary before serving requests.
 
-        Injectable callbacks replace request-time behavior for deterministic
-        tests; they must never bypass listener, token, or test-origin startup
-        validation.
+        Injectable callbacks are additive test seams; they never bypass the
+        listener, token, request, or test-origin security boundary.
         """
 
         self._ensure_auth()
@@ -374,8 +373,7 @@ def create_app(
     resolved_settings.validate()
     now = utc_clock or (lambda: datetime.now(UTC))
     security = _LazySecurity(resolved_settings)
-    uses_default_authority = authority is None
-    authority_callback = authority if authority is not None else security.authorize
+    authority_callback = authority
     policy_callback = navigation_policy if navigation_policy is not None else security.validate_url
 
     if manager is None:
@@ -472,8 +470,8 @@ def create_app(
 
     async def require(request: Request, level: RequiredAuthority) -> None:
         try:
-            if uses_default_authority:
-                await security.authorize_request(request, level)
+            await security.authorize_request(request, level)
+            if authority_callback is None:
                 return
             result = authority_callback(request.headers.get("authorization"), level)
             if inspect.isawaitable(result):

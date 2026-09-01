@@ -52,7 +52,8 @@ same browser session.
   when visual context is necessary.
 
 The checked-in runtime models headed Chrome, structured snapshots, bounded actions,
-single-session ownership, fail-closed authority, and pinned browser egress. noVNC host
+single-session ownership, fail-closed authority, and pinned browser egress. Chromium is forced
+to disable non-proxied WebRTC UDP so WebRTC cannot bypass the TCP proxy boundary. noVNC host
 integration and full private-RC acceptance still require exact-main proof.
 
 | Surface | Focused v0.1 behavior | Evidence in this checkout |
@@ -174,6 +175,8 @@ The safety model is intentionally based on a smaller surface:
   same-host HTTPS proxy tuple and distinct strong observer/controller tokens.
 - Top-level HTTP(S) destinations and redirects must be revalidated against credential, scheme,
   address-class, rebinding, and browser-initiated navigation rules.
+- Chromium disables non-proxied WebRTC UDP; routed HTTP(S) and WebSocket traffic remains subject
+  to the pinned TCP egress boundary.
 - URLs, selectors, input, text, accessibility trees, screenshots, coordinates, timeouts, and
   vision steps are bounded.
 - The public API contains no arbitrary JavaScript, DevTools, upload, clipboard, download,

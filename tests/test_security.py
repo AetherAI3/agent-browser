@@ -252,6 +252,96 @@ async def test_injected_doubles_do_not_bypass_fail_closed_startup(tmp_path: Path
 
 
 @pytest.mark.asyncio
+async def test_injected_authority_is_additive_to_remote_request_boundary(
+    tmp_path: Path,
+) -> None:
+    calls: list[tuple[str | None, RequiredAuthority]] = []
+
+    async def no_op_authority(
+        authorization: str | None,
+        required: RequiredAuthority,
+    ) -> None:
+        calls.append((authorization, required))
+
+    application = create_app(
+        manager=make_manager(FakeAdapterFactory(), tmp_path / "trusted"),
+        authority=no_op_authority,
+        settings=proxy_runtime_settings(),
+    )
+    observer_value = f"Bearer {OBSERVER_CANARY}"
+    observer = {"Authorization": observer_value}
+    async with api_client(application, base_url="https://browser.example") as client:
+        missing_authorization = await client.get("/browser/health")
+        duplicate_authorization = await client.get(
+            "/browser/health",
+            headers=[
+                ("Authorization", observer_value),
+                ("Authorization", f"Bearer {CONTROLLER_CANARY}"),
+            ],
+        )
+        missing_host = await client.get(
+            "/browser/health",
+            headers={**observer, "Host": ""},
+        )
+        duplicate_host = await client.get(
+            "/browser/health",
+            headers=[
+                ("Authorization", observer_value),
+                ("Host", "browser.example"),
+                ("Host", "browser.example"),
+            ],
+        )
+        forwarding_responses = []
+        for header_name in (
+            "Forwarded",
+            "X-Forwarded-For",
+            "X-Real-IP",
+            "X-Original-Host",
+        ):
+            forwarding_responses.append(
+                await client.get(
+                    "/browser/health",
+                    headers={**observer, header_name: "attacker-controlled"},
+                )
+            )
+        invalid_token = await client.get(
+            "/browser/health",
+            headers={"Authorization": "Bearer Invalid-Security-Token-0123456789!Gamma"},
+        )
+        wrong_role = await client.post(
+            "/browser/session/create",
+            headers=observer,
+            json={},
+        )
+        accepted = await client.get("/browser/health", headers=observer)
+
+    assert missing_authorization.status_code == 401
+    assert duplicate_authorization.status_code == 401
+    assert missing_host.status_code == 401
+    assert duplicate_host.status_code == 401
+    assert all(response.status_code == 401 for response in forwarding_responses)
+    assert invalid_token.status_code == 401
+    assert wrong_role.status_code == 403
+    assert accepted.status_code == 200
+    assert calls == [(observer_value, RequiredAuthority.OBSERVER)]
+
+    untrusted_peer_application = create_app(
+        manager=make_manager(FakeAdapterFactory(), tmp_path / "untrusted"),
+        authority=no_op_authority,
+        settings=proxy_runtime_settings(),
+    )
+    async with api_client(
+        untrusted_peer_application,
+        base_url="https://browser.example",
+        peer=("127.0.0.2", 12345),
+    ) as client:
+        wrong_peer = await client.get("/browser/health", headers=observer)
+
+    assert wrong_peer.status_code == 401
+    assert calls == [(observer_value, RequiredAuthority.OBSERVER)]
+
+
+@pytest.mark.asyncio
 async def test_real_authority_rejects_ambiguous_headers_and_rebinding_host(
     tmp_path: Path,
 ) -> None:

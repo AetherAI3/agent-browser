@@ -48,7 +48,13 @@ The session ID remains explicit in every session-scoped payload so a future mult
 
 ## Browser boundary
 
-The browser accepts top-level HTTP(S) navigation only after address and DNS policy checks. Every redirect and browser-initiated top-level navigation is revalidated. Downloads are disabled; popups are denied or closed; new tabs remain bounded to session ownership. The public API exposes no script evaluation, DevTools, upload, clipboard, extension, shell, filesystem, credential, or cookie import operation.
+The browser accepts top-level HTTP(S) navigation only after address and DNS policy checks. Every
+redirect and browser-initiated network-producing top-level navigation is revalidated;
+same-document and history-only changes do not produce a routed request and are not claimed as
+revalidated. Chromium disables non-proxied WebRTC UDP so WebRTC cannot bypass the pinned TCP
+proxy boundary. Downloads are disabled; popups are denied or closed; new tabs remain bounded to
+session ownership. The public API exposes no script evaluation, DevTools, upload, clipboard,
+extension, shell, filesystem, credential, or cookie import operation.
 
 ## Non-goals
 

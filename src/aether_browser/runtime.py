@@ -316,6 +316,7 @@ class PatchrightBrowserAdapter:
                         "--disable-quic",
                         "--disable-sync",
                         "--dns-prefetch-disable",
+                        "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
                         "--host-resolver-rules=MAP * ~NOTFOUND",
                         "--no-first-run",
                         "--no-default-browser-check",
@@ -602,10 +603,10 @@ class PatchrightBrowserAdapter:
             return
         try:
             await guard.authorize_websocket(str(web_socket.url))
-            connect = getattr(web_socket, "connect", None)
-            if not callable(connect):
+            connect_to_server = getattr(web_socket, "connect_to_server", None)
+            if not callable(connect_to_server):
                 return
-            await connect()
+            connect_to_server()
         except asyncio.CancelledError:
             raise
         except Exception:
