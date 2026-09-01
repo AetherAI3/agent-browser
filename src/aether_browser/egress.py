@@ -422,7 +422,7 @@ class PinnedSocks5Proxy:
                     return await self._dialer(address, plan.port)
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # noqa: S112 -- try the next already-authorized numeric pin.
                 continue
         raise ConnectionError("No pinned address accepted the connection")
 

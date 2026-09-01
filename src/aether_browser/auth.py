@@ -112,9 +112,9 @@ def _normalize_effective_host(host: str) -> tuple[str, bool]:
     except ValueError:
         normalized = host.casefold()
         if normalized.endswith(".") or re.fullmatch(r"[0-9.]+", normalized):
-            raise _configuration_error()
+            raise _configuration_error() from None
         if any(_DNS_LABEL_RE.fullmatch(label) is None for label in normalized.split(".")):
-            raise _configuration_error()
+            raise _configuration_error() from None
         is_loopback = normalized == "localhost" or normalized.endswith(".localhost")
         return normalized, is_loopback
 

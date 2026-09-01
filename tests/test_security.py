@@ -13,9 +13,9 @@ from fixtures.runtime_fakes import FakeAdapter, FakeAdapterFactory
 import aether_browser.main as main_module
 from aether_browser.auth import (
     AuthConfigurationError,
-    AuthSettings,
     Authority,
     AuthorityForbidden,
+    AuthSettings,
     authorize,
     build_auth_settings,
 )
