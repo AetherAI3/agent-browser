@@ -100,13 +100,10 @@ def test_production_runner_accepts_only_exact_current_main() -> None:
     assert 'test "$EXPECTED_SHA" = "$EVENT_SHA"' in text
     assert 'test "$checkout_sha" = "$EVENT_SHA"' in text
     assert text.count("ref: ${{ needs.ref-proof.outputs.sha }}") == 3
-    assert text.count('git rev-parse --verify HEAD^{commit}') == 4
+    assert text.count("git rev-parse --verify HEAD^{commit}") == 4
     assert "id: image_proof" in text
     assert "image_id: ${{ steps.image_proof.outputs.image_id }}" in text
-    assert (
-        "image_id=\"$(podman image inspect aether-browser:${GITHUB_SHA} "
-        "--format '{{.Id}}')\""
-    ) in text
+    assert "image_id=\"$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"" in text
     assert "AETHER_ACCEPTANCE_IMAGE_ID: ${{ needs.container.outputs.image_id }}" in text
     for job in ("container", "acceptance", "release-integrity"):
         assert f"  {job}:\n" in text
@@ -144,7 +141,7 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     assert 'expected_container_host="unix:///run/aether-ci-browser-podman.sock"' in text
     assert 'expected_sha="${GITHUB_SHA:-}"' in text
     assert 'expected_image_id="${AETHER_ACCEPTANCE_IMAGE_ID:-}"' in text
-    assert 'image inspect "$image_tag" --format \'{{.Id}}\'' in text
+    assert "image inspect \"$image_tag\" --format '{{.Id}}'" in text
     assert 'if [ "$actual_image_id" != "$expected_image_id" ]' in text
     assert '"${podman_cli[@]}" pod create' in text
     assert '--name "$pod" --network none --share net --hosts-file none' in text

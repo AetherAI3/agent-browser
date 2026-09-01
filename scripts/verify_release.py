@@ -348,7 +348,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         issues.append("image advertises the unauthenticated noVNC port")
 
     entrypoint_contract = (
-        '${AETHER_BROWSER_NOVNC_BIND:-127.0.0.1}',
+        "${AETHER_BROWSER_NOVNC_BIND:-127.0.0.1}",
         '[ "$novnc_bind" != "127.0.0.1" ]',
         "x11vnc -display :99 -listen 127.0.0.1",
         'websockify --web=/usr/share/novnc "$novnc_bind:$novnc_port"',
@@ -368,7 +368,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         'expected_container_host="unix:///run/aether-ci-browser-podman.sock"',
         'expected_sha="${GITHUB_SHA:-}"',
         'expected_image_id="${AETHER_ACCEPTANCE_IMAGE_ID:-}"',
-        'image inspect "$image_tag" --format \'{{.Id}}\'',
+        "image inspect \"$image_tag\" --format '{{.Id}}'",
         'if [ "$actual_image_id" != "$expected_image_id" ]',
         '--name "$pod" --network none --share net --hosts-file none',
         "--cpus=2 --memory=2g",
