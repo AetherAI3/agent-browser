@@ -34,6 +34,7 @@ jobs:
       - name: Compile candidate lock
         run: >-
           python -m piptools compile
+          --allow-unsafe
           --generate-hashes
           --resolver=backtracking
           --strip-extras
