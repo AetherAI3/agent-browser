@@ -39,6 +39,22 @@ MonotonicClock = Callable[[], float]
 _OperationResult = TypeVar("_OperationResult")
 
 
+async def _drain_owned_task(
+    task: asyncio.Future[_OperationResult],
+    cancellation: asyncio.CancelledError | None = None,
+) -> asyncio.CancelledError | None:
+    """Drain an owned child despite repeated cancellation of its parent."""
+
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError as error:
+            cancellation = cancellation or error
+        except Exception:
+            pass
+    return cancellation
+
+
 class SessionError(RuntimeError):
     """Base class for typed session failures."""
 
@@ -526,11 +542,8 @@ class SessionManager:
         if expiry_task is not None and expiry_task is not current_task:
             expiry_task.cancel()
             expiry_waiter = asyncio.gather(expiry_task, return_exceptions=True)
-            try:
-                await asyncio.shield(expiry_waiter)
-            except asyncio.CancelledError as error:
-                cancelled = error
-                await expiry_waiter
+            cancelled = await _drain_owned_task(expiry_waiter, cancelled)
+            expiry_waiter.result()
             if expiry_task.done():
                 record.expiry_task = None
         elif expiry_task is current_task:
@@ -553,14 +566,14 @@ class SessionManager:
             self._remove_profile(record.profile_directory),
             name="aether-browser-profile-cleanup",
         )
+        cancelled = await _drain_owned_task(profile_task, cancelled)
         try:
-            profile_removed = await asyncio.shield(profile_task)
+            profile_removed = profile_task.result()
         except asyncio.CancelledError as error:
             cancelled = cancelled or error
-            try:
-                profile_removed = await profile_task
-            except asyncio.CancelledError:
-                profile_removed = False
+            profile_removed = False
+        except Exception:
+            profile_removed = False
         if not profile_removed:
             failed = True
 

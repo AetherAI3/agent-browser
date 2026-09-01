@@ -136,6 +136,24 @@ async def _call_guard(guard: NavigationGuard | None, url: str) -> None:
         await result
 
 
+async def _drain_owned_task(
+    task: asyncio.Future[Any],
+    cancellation: asyncio.CancelledError | None = None,
+) -> asyncio.CancelledError | None:
+    """Wait for an owned child without allowing repeated caller cancellation to cancel it."""
+
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError as error:
+            cancellation = cancellation or error
+        except Exception:
+            # The synchronous result inspection by the owner preserves the
+            # child's typed failure after the child has finished.
+            pass
+    return cancellation
+
+
 def _bounded(value: object, limit: int) -> str:
     return str(value or "")[:limit]
 
@@ -396,19 +414,21 @@ class PatchrightBrowserAdapter:
             name="aether-browser-adapter-cleanup",
         )
         try:
-            await asyncio.shield(cleanup_task)
-        except asyncio.CancelledError:
-            # Cleanup is an ownership boundary. Finish every bounded close attempt
-            # before propagating cancellation to the caller.
+            cancellation = await _drain_owned_task(cleanup_task)
+            cleanup_error: BrowserOperationError | None = None
             try:
-                await cleanup_task
-            except BrowserOperationError:
-                pass
-            raise
-        except BrowserOperationError:
-            raise
-        except Exception:
-            raise BrowserOperationError("Browser cleanup did not complete.") from None
+                cleanup_task.result()
+            except asyncio.CancelledError as error:
+                cancellation = cancellation or error
+            except BrowserOperationError as error:
+                cleanup_error = error
+            except Exception:
+                cleanup_error = BrowserOperationError("Browser cleanup did not complete.")
+
+            if cancellation is not None:
+                raise cancellation
+            if cleanup_error is not None:
+                raise cleanup_error
         finally:
             self._closing = False
 

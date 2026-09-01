@@ -427,6 +427,58 @@ async def test_cancelled_end_retains_cleanup_state_for_retry(tmp_path: Path) -> 
 
 
 @pytest.mark.asyncio
+async def test_profile_cleanup_survives_repeated_parent_cancellation(tmp_path: Path) -> None:
+    factory = FakeAdapterFactory()
+    clock = FakeClock()
+
+    class BlockingProfileManager(SessionManager):
+        def __init__(self) -> None:
+            super().__init__(
+                factory,
+                idle_timeout_seconds=10.0,
+                absolute_lifetime_seconds=60.0,
+                reaper_resolution_seconds=60.0,
+                profile_root=tmp_path,
+                utc_clock=clock.utc_now,
+                monotonic_clock=clock.monotonic,
+            )
+            self.profile_cleanup_started = asyncio.Event()
+            self.profile_cleanup_release = asyncio.Event()
+
+        async def _remove_profile(self, profile_directory: Path) -> bool:
+            self.profile_cleanup_started.set()
+            await self.profile_cleanup_release.wait()
+            return await super()._remove_profile(profile_directory)
+
+    manager = BlockingProfileManager()
+    created = await manager.create(2)
+    adapter = factory.adapters[0]
+    profile = adapter.launched_profile
+    assert profile is not None
+
+    ending = asyncio.create_task(manager.end(created.session_id))
+    await manager.profile_cleanup_started.wait()
+    ending.cancel()
+    await asyncio.sleep(0)
+    ending.cancel()
+    await asyncio.sleep(0)
+
+    assert not ending.done()
+    assert profile.exists()
+    manager.profile_cleanup_release.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await ending
+    assert adapter.closed
+    assert not profile.exists()
+    assert manager.current_state.value == "ending"
+
+    ended = await manager.end(created.session_id)
+    assert ended.status == "ended"
+    await manager.shutdown()
+
+
+@pytest.mark.asyncio
 async def test_profile_cleanup_failure_is_retriable_and_blocks_success(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

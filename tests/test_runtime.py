@@ -360,7 +360,7 @@ async def test_close_attempts_every_resource_and_retains_a_failed_handle_for_ret
 
 
 @pytest.mark.asyncio
-async def test_close_finishes_all_resource_attempts_before_propagating_cancellation() -> None:
+async def test_close_drains_all_resources_before_propagating_repeated_cancellation() -> None:
     class BlockingClosable:
         def __init__(self) -> None:
             self.started = asyncio.Event()
@@ -383,6 +383,12 @@ async def test_close_finishes_all_resource_attempts_before_propagating_cancellat
     closing = asyncio.create_task(adapter.close())
     await context.started.wait()
     closing.cancel()
+    await asyncio.sleep(0)
+    closing.cancel()
+    await asyncio.sleep(0)
+
+    assert not closing.done()
+    assert not context.closed
     context.release.set()
 
     with pytest.raises(asyncio.CancelledError):
