@@ -36,10 +36,10 @@ def _domain_request(hostname: str, port: int) -> bytes:
 
 async def _close_client(writer: asyncio.StreamWriter) -> None:
     writer.close()
-    try:
-        await writer.wait_closed()
-    except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
-        pass
+    # Refusal tests intentionally provoke a peer reset.  On Linux the reset is
+    # retained by StreamReader and re-raised by wait_closed(), even after the
+    # transport is already closed; yielding once is sufficient for test cleanup.
+    await asyncio.sleep(0)
 
 
 async def _echo_target(
