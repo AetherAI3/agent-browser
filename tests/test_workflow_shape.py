@@ -103,7 +103,10 @@ def test_production_runner_accepts_only_exact_current_main() -> None:
     assert text.count("git rev-parse --verify HEAD^{commit}") == 4
     assert "id: image_proof" in text
     assert "image_id: ${{ steps.image_proof.outputs.image_id }}" in text
-    assert "image_id=\"$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"" in text
+    assert (
+        "image_id=\"$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')\""
+        in text
+    )
     assert "AETHER_ACCEPTANCE_IMAGE_ID: ${{ needs.container.outputs.image_id }}" in text
     for job in ("container", "acceptance", "release-integrity"):
         assert f"  {job}:\n" in text

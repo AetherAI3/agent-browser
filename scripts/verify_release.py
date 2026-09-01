@@ -216,6 +216,7 @@ def _scan_patterns(
     name: str,
     patterns: Iterable[re.Pattern[str]],
     include: Callable[[str], bool] | None = None,
+    allowed_lines: frozenset[tuple[str, str]] = frozenset(),
 ) -> tuple[bool, str]:
     hits: list[str] = []
     for path in _text_files():
@@ -224,6 +225,8 @@ def _scan_patterns(
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         for line_number, line in enumerate(text.splitlines(), start=1):
+            if (rel, line.strip()) in allowed_lines:
+                continue
             if any(pattern.search(line) for pattern in patterns):
                 hits.append(f"{rel}:{line_number}")
                 if len(hits) >= 25:
@@ -255,7 +258,17 @@ def _secret_scan() -> tuple[bool, str]:
 def _private_infrastructure_scan() -> tuple[bool, str]:
     hits: list[str] = []
     ipv4 = re.compile(r"(?<![\d.])(?:\d{1,3}\.){3}\d{1,3}(?![\d.])")
-    suffixes = ("." + "internal", "." + "lan", "." + "ts.net")
+    private_hostname = re.compile(
+        r"(?i)(?<![a-z0-9_-])(?:\.(?:internal|lan|ts\.net)|"
+        r"(?:[a-z0-9-]+\.)+(?:internal|lan|ts\.net))(?![a-z0-9_-])"
+    )
+    policy_path = "src/aether_browser/policy.py"
+    policy_denylist_blocks = (
+        "_PROHIBITED_HOSTS",
+        "_PROHIBITED_SUFFIXES",
+        "_PROHIBITED_IPV4_NETWORKS",
+        "_PROHIBITED_IPV6_NETWORKS",
+    )
     public_copy = {"README.md", "docs/index.html", "docs/launch.md"}
     for path in _text_files():
         rel = _relative(path)
@@ -266,8 +279,14 @@ def _private_infrastructure_scan() -> tuple[bool, str]:
         ):
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
+        in_policy_denylist = False
         for line_number, line in enumerate(text.splitlines(), start=1):
-            bad = any(suffix in line.lower() for suffix in suffixes)
+            if rel == policy_path:
+                if line.startswith(policy_denylist_blocks):
+                    in_policy_denylist = True
+                elif line and not line[0].isspace():
+                    in_policy_denylist = False
+            bad = bool(private_hostname.search(line))
             for candidate in ipv4.findall(line):
                 try:
                     address = ipaddress.ip_address(candidate)
@@ -275,6 +294,8 @@ def _private_infrastructure_scan() -> tuple[bool, str]:
                     continue
                 if (address.is_private or address.is_link_local) and not address.is_loopback:
                     bad = True
+            if bad and in_policy_denylist and line.strip().startswith('"'):
+                bad = False
             if bad:
                 hits.append(f"{rel}:{line_number}")
     return (
@@ -300,7 +321,26 @@ def _banned_domain_scan() -> tuple[bool, str]:
             }
         )
 
-    return _scan_patterns("excluded-domain scan", patterns, public_or_executable)
+    documented_non_goals = frozenset(
+        {
+            (
+                "README.md",
+                "references; ATS/trading integrations, broker or account selectors, order "
+                "actions, secrets,",
+            ),
+            (
+                "README.md",
+                "- No multi-session pool, ATS integration, trading integration, or brokerage "
+                "behavior.",
+            ),
+        }
+    )
+    return _scan_patterns(
+        "excluded-domain scan",
+        patterns,
+        public_or_executable,
+        allowed_lines=documented_non_goals,
+    )
 
 
 def _credential_injection_scan() -> tuple[bool, str]:
