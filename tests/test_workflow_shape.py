@@ -142,6 +142,9 @@ def test_container_build_context_is_a_runtime_allowlist_without_git_metadata() -
     assert not (ROOT / ".containerignore").exists(), (
         "Podman gives .containerignore precedence; it must not override the reviewed allowlist"
     )
+    assert not (ROOT / "Dockerfile.dockerignore").exists(), (
+        "Docker gives Dockerfile.dockerignore precedence; it must not override the reviewed allowlist"
+    )
 
     rules = tuple(
         line

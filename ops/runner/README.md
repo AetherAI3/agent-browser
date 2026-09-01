@@ -24,8 +24,8 @@ The repository root `.dockerignore` is a runtime allowlist shared by Docker and 
 It excludes Git metadata, tests, workflows, caches, local environments, evidence, and unrelated
 repository material before the context reaches the remote builder; only package metadata,
 license material, `src/**`, and `scripts/container-entrypoint.sh` can enter `COPY . /app`.
-`.containerignore` must remain absent because Podman would give it precedence over this reviewed
-contract.
+`.containerignore` and `Dockerfile.dockerignore` must remain absent because Podman and Docker,
+respectively, would give them precedence over this reviewed contract.
 
 The local Compose quickstart deliberately uses Linux host networking so its API and unauthenticated browser-view processes can bind the developer host's numeric loopback interface directly. That local-host trust boundary is not the CI topology.
 
