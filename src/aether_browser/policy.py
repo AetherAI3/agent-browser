@@ -23,6 +23,7 @@ DEFAULT_MAX_DNS_ANSWERS: Final = 16
 DEFAULT_MAX_RESOLUTIONS: Final = 16
 DEFAULT_MAX_REDIRECTS: Final = 10
 DEFAULT_MAX_TOP_LEVEL_NAVIGATIONS: Final = 32
+DEFAULT_MAX_ENDPOINT_PINS: Final = 128
 
 IPAddress = ipaddress.IPv4Address | ipaddress.IPv6Address
 ResolverAnswer = str | IPAddress
@@ -67,10 +68,47 @@ _PROHIBITED_SUFFIXES: Final = (
     ".lvh.me",
     ".test",
 )
-_PROHIBITED_IPV6_NETWORKS: Final = (
-    ipaddress.IPv6Network("64:ff9b::/96"),  # well-known NAT64 embeds an IPv4 target
-    ipaddress.IPv6Network("64:ff9b:1::/48"),
-    ipaddress.IPv6Network("2002::/16"),  # 6to4 embeds an IPv4 target
+_PROHIBITED_IPV4_NETWORKS: Final = tuple(
+    ipaddress.IPv4Network(network)
+    for network in (
+        "0.0.0.0/8",
+        "10.0.0.0/8",
+        "100.64.0.0/10",
+        "127.0.0.0/8",
+        "169.254.0.0/16",
+        "172.16.0.0/12",
+        "192.0.0.0/24",
+        "192.0.2.0/24",
+        "192.88.99.0/24",
+        "192.168.0.0/16",
+        "198.18.0.0/15",
+        "198.51.100.0/24",
+        "203.0.113.0/24",
+        "224.0.0.0/4",
+        "240.0.0.0/4",
+    )
+)
+_PROHIBITED_IPV6_NETWORKS: Final = tuple(
+    ipaddress.IPv6Network(network)
+    for network in (
+        "::/128",
+        "::1/128",
+        "::ffff:0:0/96",
+        "64:ff9b::/96",  # well-known NAT64 embeds an IPv4 target
+        "64:ff9b:1::/48",
+        "100::/64",
+        "100:0:0:1::/64",
+        "2001::/32",
+        "2001:2::/48",
+        "2001:10::/28",
+        "2001:db8::/32",
+        "2002::/16",  # 6to4 embeds an IPv4 target
+        "3fff::/20",
+        "5f00::/16",
+        "fc00::/7",
+        "fe80::/10",
+        "ff00::/8",
+    )
 )
 
 
@@ -140,8 +178,18 @@ class ValidatedUrl:
     hostname: str
     port: int
     resolved_address_count: int
+    _addresses: tuple[IPAddress, ...] = field(repr=False, compare=False)
     _address_fingerprints: frozenset[bytes] = field(repr=False, compare=False)
     _used_dns: bool = field(repr=False, compare=False)
+
+
+@dataclass(frozen=True, slots=True)
+class ConnectionPlan:
+    """An immutable, numeric-only dial plan published by one session guard."""
+
+    hostname: str = field(repr=False)
+    port: int
+    addresses: tuple[IPAddress, ...] = field(repr=False)
 
 
 def _contains_control_encoding(url: str) -> bool:
@@ -201,7 +249,13 @@ def _normalize_hostname(hostname: str) -> tuple[str, IPAddress | None]:
     return ascii_hostname, None
 
 
-def _parse_target(url: str, *, max_url_length: int, origin_only: bool = False) -> _ParsedTarget:
+def _parse_target(
+    url: str,
+    *,
+    max_url_length: int,
+    origin_only: bool = False,
+    websocket: bool = False,
+) -> _ParsedTarget:
     if (
         not isinstance(url, str)
         or not url
@@ -218,7 +272,8 @@ def _parse_target(url: str, *, max_url_length: int, origin_only: bool = False) -
     except (TypeError, ValueError, UnicodeError):
         raise _invalid() from None
     scheme = parts.scheme.lower()
-    if scheme not in {"http", "https"}:
+    allowed_schemes = {"ws", "wss"} if websocket else {"http", "https"}
+    if scheme not in allowed_schemes:
         raise _invalid(PolicyReason.UNSUPPORTED_SCHEME)
     if not parts.netloc or parts.hostname is None:
         raise _invalid()
@@ -231,7 +286,7 @@ def _parse_target(url: str, *, max_url_length: int, origin_only: bool = False) -
         port = parts.port
     except ValueError:
         raise _invalid() from None
-    default_port = 80 if scheme == "http" else 443
+    default_port = 80 if scheme in {"http", "ws"} else 443
     port = default_port if port is None else port
     if not 1 <= port <= 65_535:
         raise _invalid()
@@ -264,8 +319,17 @@ def _address_is_prohibited(address: IPAddress) -> bool:
     # ``is_global`` closes gaps such as documentation, benchmarking, carrier
     # grade NAT, reserved, and future-use ranges.  Explicit properties make the
     # intended policy stable and reviewable across Python data-table changes.
+    if isinstance(address, ipaddress.IPv4Address):
+        explicitly_prohibited = any(
+            address in network for network in _PROHIBITED_IPV4_NETWORKS
+        )
+    else:
+        explicitly_prohibited = any(
+            address in network for network in _PROHIBITED_IPV6_NETWORKS
+        )
     if (
-        address.is_loopback
+        explicitly_prohibited
+        or address.is_loopback
         or address.is_private
         or address.is_link_local
         or address.is_multicast
@@ -276,9 +340,10 @@ def _address_is_prohibited(address: IPAddress) -> bool:
         return True
 
     if isinstance(address, ipaddress.IPv6Address):
-        if address.ipv4_mapped is not None or address.sixtofour is not None or address.teredo:
+        mapped = address.ipv4_mapped
+        if mapped is not None and _address_is_prohibited(mapped):
             return True
-        if any(address in network for network in _PROHIBITED_IPV6_NETWORKS):
+        if mapped is not None or address.sixtofour is not None or address.teredo:
             return True
     return False
 
@@ -309,6 +374,7 @@ class NavigationPolicy:
         "_resolver",
         "_test_origin_set",
         "max_dns_answers",
+        "max_endpoint_pins",
         "max_redirects",
         "max_resolutions",
         "max_top_level_navigations",
@@ -327,6 +393,7 @@ class NavigationPolicy:
         max_url_length: int = MAX_URL_LENGTH,
         resolution_timeout_seconds: float = DEFAULT_RESOLUTION_TIMEOUT_SECONDS,
         max_dns_answers: int = DEFAULT_MAX_DNS_ANSWERS,
+        max_endpoint_pins: int = DEFAULT_MAX_ENDPOINT_PINS,
         max_resolutions: int = DEFAULT_MAX_RESOLUTIONS,
         max_redirects: int = DEFAULT_MAX_REDIRECTS,
         max_top_level_navigations: int = DEFAULT_MAX_TOP_LEVEL_NAVIGATIONS,
@@ -342,6 +409,7 @@ class NavigationPolicy:
         if (
             type(max_url_length) is not int
             or type(max_dns_answers) is not int
+            or type(max_endpoint_pins) is not int
             or type(max_resolutions) is not int
             or type(max_redirects) is not int
             or type(max_top_level_navigations) is not int
@@ -356,6 +424,7 @@ class NavigationPolicy:
             not 1 <= max_url_length <= 16_384
             or not 0.01 <= resolution_timeout_seconds <= 10.0
             or not 1 <= max_dns_answers <= 64
+            or not 1 <= max_endpoint_pins <= 1_024
             or not 1 <= max_resolutions <= 128
             or not 0 <= max_redirects <= 20
             or not 1 <= max_top_level_navigations <= 128
@@ -379,6 +448,7 @@ class NavigationPolicy:
         self.max_url_length = max_url_length
         self.resolution_timeout_seconds = resolution_timeout_seconds
         self.max_dns_answers = max_dns_answers
+        self.max_endpoint_pins = max_endpoint_pins
         self.max_resolutions = max_resolutions
         self.max_redirects = max_redirects
         self.max_top_level_navigations = max_top_level_navigations
@@ -390,6 +460,7 @@ class NavigationPolicy:
             "max_url_length": self.max_url_length,
             "resolution_timeout_seconds": self.resolution_timeout_seconds,
             "max_dns_answers": self.max_dns_answers,
+            "max_endpoint_pins": self.max_endpoint_pins,
             "max_resolutions": self.max_resolutions,
             "max_redirects": self.max_redirects,
             "max_top_level_navigations": self.max_top_level_navigations,
@@ -431,11 +502,13 @@ class NavigationPolicy:
         except Exception:
             raise _blocked(PolicyReason.RESOLUTION_FAILED) from None
 
-    async def validate_url(self, url: str) -> ValidatedUrl:
-        """Parse, resolve, and approve a single top-level URL."""
-
-        parsed = _parse_target(url, max_url_length=self.max_url_length)
-        fixture_allowed = self.test_mode and parsed.origin in self._test_origin_set
+    async def _validate_parsed(self, parsed: _ParsedTarget) -> ValidatedUrl:
+        fixture_origin = parsed.origin
+        if parsed.scheme == "ws":
+            fixture_origin = f"http{parsed.origin[2:]}"
+        elif parsed.scheme == "wss":
+            fixture_origin = f"https{parsed.origin[3:]}"
+        fixture_allowed = self.test_mode and fixture_origin in self._test_origin_set
 
         addresses: tuple[IPAddress, ...]
         if parsed.literal_address is not None:
@@ -456,9 +529,26 @@ class NavigationPolicy:
             hostname=parsed.hostname,
             port=parsed.port,
             resolved_address_count=len(fingerprints),
+            _addresses=addresses,
             _address_fingerprints=fingerprints,
             _used_dns=parsed.literal_address is None,
         )
+
+    async def validate_url(self, url: str) -> ValidatedUrl:
+        """Parse, resolve, and approve a single HTTP(S) URL."""
+
+        parsed = _parse_target(url, max_url_length=self.max_url_length)
+        return await self._validate_parsed(parsed)
+
+    async def validate_websocket_url(self, url: str) -> ValidatedUrl:
+        """Parse, resolve, and approve a single WS(S) URL."""
+
+        parsed = _parse_target(
+            url,
+            max_url_length=self.max_url_length,
+            websocket=True,
+        )
+        return await self._validate_parsed(parsed)
 
     def new_guard(self) -> NavigationGuard:
         """Create per-browser state for redirect and DNS-rebinding checks."""
@@ -467,15 +557,17 @@ class NavigationPolicy:
 
 
 class NavigationGuard:
-    """Revalidate original, redirect, and later top-level navigations."""
+    """Revalidate navigations and own immutable per-endpoint connection pins."""
 
     __slots__ = (
-        "_approved_addresses",
         "_checks",
         "_initial_seen",
+        "_lock",
+        "_pins",
         "_policy",
         "_redirects",
         "_top_level_navigations",
+        "max_endpoint_pins",
         "max_redirects",
         "max_resolutions",
         "max_top_level_navigations",
@@ -486,17 +578,26 @@ class NavigationGuard:
         policy: NavigationPolicy,
         *,
         max_resolutions: int | None = None,
+        max_endpoint_pins: int | None = None,
         max_redirects: int | None = None,
         max_top_level_navigations: int | None = None,
     ) -> None:
         if any(
             value is not None and type(value) is not int
-            for value in (max_resolutions, max_redirects, max_top_level_navigations)
+            for value in (
+                max_resolutions,
+                max_endpoint_pins,
+                max_redirects,
+                max_top_level_navigations,
+            )
         ):
             raise PolicyConfigurationError()
         self._policy = policy
         self.max_resolutions = (
             policy.max_resolutions if max_resolutions is None else max_resolutions
+        )
+        self.max_endpoint_pins = (
+            policy.max_endpoint_pins if max_endpoint_pins is None else max_endpoint_pins
         )
         self.max_redirects = policy.max_redirects if max_redirects is None else max_redirects
         self.max_top_level_navigations = (
@@ -506,11 +607,13 @@ class NavigationGuard:
         )
         if (
             not 1 <= self.max_resolutions <= 128
+            or not 1 <= self.max_endpoint_pins <= 1_024
             or not 0 <= self.max_redirects <= 20
             or not 1 <= self.max_top_level_navigations <= 128
         ):
             raise PolicyConfigurationError()
-        self._approved_addresses: dict[str, frozenset[bytes]] = {}
+        self._pins: dict[tuple[str, int], ConnectionPlan] = {}
+        self._lock = asyncio.Lock()
         self._checks = 0
         self._redirects = 0
         self._top_level_navigations = 0
@@ -524,41 +627,146 @@ class NavigationGuard:
     def validation_count(self) -> int:
         return self._checks
 
-    async def _validate_and_pin(self, url: str) -> ValidatedUrl:
-        if self._checks >= self.max_resolutions:
-            raise _blocked(PolicyReason.NAVIGATION_LIMIT)
-        self._checks += 1
-        validated = await self._policy.validate_url(url)
-        if validated._used_dns:
-            approved = self._approved_addresses.get(validated.hostname)
-            if approved is None:
-                self._approved_addresses[validated.hostname] = validated._address_fingerprints
-            elif not hmac_compare_fingerprints(approved, validated._address_fingerprints):
-                raise _blocked(PolicyReason.DNS_REBINDING)
-        return validated
+    @property
+    def endpoint_pins(self) -> tuple[ConnectionPlan, ...]:
+        """Return an immutable snapshot without exposing mutable guard state."""
+
+        return tuple(self._pins.values())
+
+    def _validated_from_plan(
+        self,
+        parsed: _ParsedTarget,
+        plan: ConnectionPlan,
+        *,
+        used_dns: bool,
+    ) -> ValidatedUrl:
+        fingerprints = frozenset(_fingerprint(address) for address in plan.addresses)
+        return ValidatedUrl(
+            url=parsed.url,
+            origin=parsed.origin,
+            scheme=parsed.scheme,
+            hostname=parsed.hostname,
+            port=parsed.port,
+            resolved_address_count=len(plan.addresses),
+            _addresses=plan.addresses,
+            _address_fingerprints=fingerprints,
+            _used_dns=used_dns,
+        )
+
+    async def _validate_and_pin(
+        self,
+        url: str,
+        *,
+        websocket: bool = False,
+        reuse_existing: bool = False,
+    ) -> ValidatedUrl:
+        parsed = _parse_target(
+            url,
+            max_url_length=self._policy.max_url_length,
+            websocket=websocket,
+        )
+        key = (parsed.hostname, parsed.port)
+        async with self._lock:
+            existing = self._pins.get(key)
+            if reuse_existing and existing is not None:
+                return self._validated_from_plan(
+                    parsed,
+                    existing,
+                    used_dns=parsed.literal_address is None,
+                )
+            if self._checks >= self.max_resolutions:
+                raise _blocked(PolicyReason.NAVIGATION_LIMIT)
+            # Reserve before awaiting DNS so concurrent publications cannot
+            # overrun the resolution budget.
+            self._checks += 1
+
+        validated = await self._policy._validate_parsed(parsed)
+        candidate = ConnectionPlan(
+            hostname=validated.hostname,
+            port=validated.port,
+            addresses=validated._addresses,
+        )
+        async with self._lock:
+            existing = self._pins.get(key)
+            if existing is None:
+                if len(self._pins) >= self.max_endpoint_pins:
+                    raise _blocked(PolicyReason.NAVIGATION_LIMIT)
+                self._pins[key] = candidate
+                plan = candidate
+            else:
+                existing_fingerprints = frozenset(
+                    _fingerprint(address) for address in existing.addresses
+                )
+                if not hmac_compare_fingerprints(
+                    existing_fingerprints,
+                    validated._address_fingerprints,
+                ):
+                    raise _blocked(PolicyReason.DNS_REBINDING)
+                # Keep the first numeric order as the immutable dial plan even
+                # when later DNS answers contain the same set in a new order.
+                plan = existing
+        return self._validated_from_plan(
+            parsed,
+            plan,
+            used_dns=validated._used_dns,
+        )
 
     async def validate_initial(self, url: str) -> ValidatedUrl:
-        if self._initial_seen:
-            raise _blocked(PolicyReason.NAVIGATION_LIMIT)
-        self._initial_seen = True
-        self._top_level_navigations = 1
+        async with self._lock:
+            if self._initial_seen:
+                raise _blocked(PolicyReason.NAVIGATION_LIMIT)
+            self._initial_seen = True
+            self._top_level_navigations = 1
         return await self._validate_and_pin(url)
 
     async def validate_redirect(self, url: str) -> ValidatedUrl:
-        if not self._initial_seen:
-            raise _blocked(PolicyReason.NAVIGATION_LIMIT)
-        if self._redirects >= self.max_redirects:
-            raise _blocked(PolicyReason.REDIRECT_LIMIT)
-        self._redirects += 1
+        async with self._lock:
+            if not self._initial_seen:
+                raise _blocked(PolicyReason.NAVIGATION_LIMIT)
+            if self._redirects >= self.max_redirects:
+                raise _blocked(PolicyReason.REDIRECT_LIMIT)
+            self._redirects += 1
         return await self._validate_and_pin(url)
 
     async def validate_navigation(self, url: str) -> ValidatedUrl:
-        if not self._initial_seen:
-            return await self.validate_initial(url)
-        if self._top_level_navigations >= self.max_top_level_navigations:
-            raise _blocked(PolicyReason.NAVIGATION_LIMIT)
-        self._top_level_navigations += 1
+        async with self._lock:
+            if not self._initial_seen:
+                self._initial_seen = True
+                self._top_level_navigations = 1
+            else:
+                if self._top_level_navigations >= self.max_top_level_navigations:
+                    raise _blocked(PolicyReason.NAVIGATION_LIMIT)
+                self._top_level_navigations += 1
         return await self._validate_and_pin(url)
+
+    async def authorize_request(self, url: str) -> ValidatedUrl:
+        """Authorize an HTTP(S) subresource and publish a new endpoint atomically."""
+
+        return await self._validate_and_pin(url, reuse_existing=True)
+
+    async def authorize_websocket(self, url: str) -> ValidatedUrl:
+        """Authorize WS(S) before the browser asks the proxy to connect."""
+
+        return await self._validate_and_pin(
+            url,
+            websocket=True,
+            reuse_existing=True,
+        )
+
+    async def connection_plan(self, hostname: str, port: int) -> ConnectionPlan:
+        """Return an already-published numeric plan; never perform DNS here."""
+
+        if type(port) is not int or not 1 <= port <= 65_535:
+            raise _blocked()
+        try:
+            normalized, _literal = _normalize_hostname(hostname)
+        except PolicyError:
+            raise _blocked() from None
+        async with self._lock:
+            plan = self._pins.get((normalized, port))
+        if plan is None:
+            raise _blocked()
+        return plan
 
     async def validate(self, url: str) -> ValidatedUrl:
         """Callback-friendly alias for initial and later top-level checks."""
@@ -595,11 +803,14 @@ async def validate_navigation_url(
 
 __all__ = [
     "DEFAULT_MAX_DNS_ANSWERS",
+    "DEFAULT_MAX_ENDPOINT_PINS",
     "DEFAULT_MAX_REDIRECTS",
     "DEFAULT_MAX_RESOLUTIONS",
     "DEFAULT_MAX_TOP_LEVEL_NAVIGATIONS",
     "DEFAULT_RESOLUTION_TIMEOUT_SECONDS",
     "MAX_URL_LENGTH",
+    "ConnectionPlan",
+    "IPAddress",
     "NavigationGuard",
     "NavigationPolicy",
     "PolicyConfigurationError",

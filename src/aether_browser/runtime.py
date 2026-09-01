@@ -16,8 +16,10 @@ import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, NoReturn, Protocol
+from typing import TYPE_CHECKING, Any, NoReturn, Protocol, cast
+from urllib.parse import urlsplit
 
+from aether_browser.egress import PinnedSocks5Proxy
 from aether_browser.models import (
     MAX_ACCESSIBILITY_NODES,
     MAX_READABLE_TEXT_CHARS,
@@ -27,6 +29,9 @@ from aether_browser.models import (
     Viewport,
 )
 
+if TYPE_CHECKING:
+    from aether_browser.policy import ConnectionPlan
+
 DEFAULT_VIEWPORT_WIDTH = 1280
 DEFAULT_VIEWPORT_HEIGHT = 720
 DEFAULT_ACTION_TIMEOUT_SECONDS = 15.0
@@ -34,7 +39,17 @@ DEFAULT_NAVIGATION_TIMEOUT_SECONDS = 30.0
 DEFAULT_LAUNCH_TIMEOUT_SECONDS = 30.0
 DEFAULT_CLEANUP_TIMEOUT_SECONDS = 10.0
 
-NavigationGuard = Callable[[str], Awaitable[None] | None]
+NavigationGuard = Callable[[str], Awaitable[object] | object]
+
+
+class PinnedNetworkGuard(Protocol):
+    """Per-session authority used by both interception and the dial proxy."""
+
+    async def authorize_request(self, url: str) -> object: ...
+
+    async def authorize_websocket(self, url: str) -> object: ...
+
+    async def connection_plan(self, hostname: str, port: int) -> ConnectionPlan: ...
 
 
 class BrowserRuntimeError(RuntimeError):
@@ -136,6 +151,16 @@ async def _call_guard(guard: NavigationGuard | None, url: str) -> None:
         await result
 
 
+def _pinned_owner(guard: NavigationGuard | None) -> PinnedNetworkGuard | None:
+    owner = getattr(guard, "__self__", None)
+    if owner is None:
+        return None
+    required = ("authorize_request", "authorize_websocket", "connection_plan")
+    if not all(callable(getattr(owner, name, None)) for name in required):
+        return None
+    return cast(PinnedNetworkGuard, owner)
+
+
 async def _drain_owned_task(
     task: asyncio.Future[Any],
     cancellation: asyncio.CancelledError | None = None,
@@ -221,6 +246,7 @@ class PatchrightBrowserAdapter:
 
         self._navigation_guard = navigation_guard
         self._redirect_guard = redirect_guard or navigation_guard
+        self._network_guard = _pinned_owner(navigation_guard)
         self._chrome_channel = chrome_channel
         self._viewport = Viewport(width=viewport_width, height=viewport_height)
         self._action_timeout = action_timeout_seconds
@@ -229,6 +255,7 @@ class PatchrightBrowserAdapter:
         self._cleanup_timeout = cleanup_timeout_seconds
 
         self._patchright: Any | None = None
+        self._proxy: PinnedSocks5Proxy | None = None
         self._browser: Any | None = None
         self._context: Any | None = None
         self._page: Any | None = None
@@ -249,15 +276,25 @@ class PatchrightBrowserAdapter:
             return False
 
     async def launch(self, profile_directory: Path) -> None:
-        if self._patchright is not None or self._context is not None:
+        if (
+            self._patchright is not None
+            or self._context is not None
+            or self._proxy is not None
+        ):
             raise BrowserLaunchError("Browser launch was refused.")
         if os.name != "nt" and not os.environ.get("DISPLAY"):
             raise BrowserLaunchError("A headed browser display is unavailable.")
+        guard = self._network_guard
+        if guard is None:
+            raise BrowserLaunchError("A pinned browser egress boundary is required.")
 
         try:
             from patchright.async_api import async_playwright
 
             async with asyncio.timeout(self._launch_timeout):
+                self._proxy = PinnedSocks5Proxy(guard.connection_plan)
+                await self._proxy.start()
+                proxy_url = self._proxy.server_url
                 self._patchright = await async_playwright().start()
                 self._context = await self._patchright.chromium.launch_persistent_context(
                     str(profile_directory),
@@ -271,22 +308,37 @@ class PatchrightBrowserAdapter:
                     device_scale_factor=self._viewport.device_scale_factor,
                     service_workers="block",
                     timeout=int(self._launch_timeout * 1000),
+                    proxy={"server": proxy_url, "bypass": ""},
                     args=[
                         "--disable-background-networking",
                         "--disable-component-update",
                         "--disable-default-apps",
-                        "--disable-features=DownloadBubble,DownloadBubbleV2",
+                        "--disable-features="
+                        "AsyncDns,DnsOverHttps,DnsOverHttpsUpgrade,"
+                        "DownloadBubble,DownloadBubbleV2,UseDnsHttpsSvcbAlpn",
+                        "--disable-http2",
+                        "--disable-quic",
                         "--disable-sync",
+                        "--dns-prefetch-disable",
+                        "--host-resolver-rules=MAP * ~NOTFOUND",
                         "--no-first-run",
                         "--no-default-browser-check",
+                        "--proxy-bypass-list=<-loopback>",
+                        f"--proxy-server={proxy_url}",
                     ],
                 )
                 self._context.set_default_timeout(int(self._action_timeout * 1000))
-                self._context.set_default_navigation_timeout(int(self._navigation_timeout * 1000))
+                self._context.set_default_navigation_timeout(
+                    int(self._navigation_timeout * 1000)
+                )
+                await self._context.route("**/*", self._route_request)
+                route_web_socket = getattr(self._context, "route_web_socket", None)
+                if not callable(route_web_socket):
+                    raise BrowserLaunchError("WebSocket routing is unavailable.")
+                await route_web_socket("**/*", self._route_web_socket)
                 pages = list(self._context.pages)
                 self._page = pages[0] if pages else await self._context.new_page()
                 self._browser = self._context.browser
-                await self._context.route("**/*", self._route_request)
                 self._install_page_boundaries(self._page)
                 self._context.on("page", self._handle_new_page_event)
                 if self._browser is not None:
@@ -466,6 +518,16 @@ class PatchrightBrowserAdapter:
                 failures += 1
             else:
                 self._patchright = None
+        if self._proxy is not None:
+            try:
+                async with asyncio.timeout(self._cleanup_timeout):
+                    await self._proxy.close()
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                failures += 1
+            else:
+                self._proxy = None
 
         self._cleanup_failures = failures
         if failures:
@@ -498,7 +560,18 @@ class PatchrightBrowserAdapter:
         )
 
     async def _route_request(self, route: Any, request: Any) -> None:
+        is_navigation = False
+        is_primary = False
+        authorization_complete = False
         try:
+            url = str(request.url)
+            try:
+                scheme = urlsplit(url).scheme.casefold()
+            except (TypeError, ValueError):
+                scheme = ""
+            if scheme not in {"http", "https"}:
+                await route.abort("blockedbyclient")
+                return
             is_navigation = bool(request.is_navigation_request())
             is_primary = self._page is not None and request.frame == self._page.main_frame
             if is_navigation:
@@ -509,17 +582,42 @@ class PatchrightBrowserAdapter:
                 guard = (
                     self._redirect_guard if redirected_from is not None else self._navigation_guard
                 )
-                await _call_guard(guard, str(request.url))
+                await _call_guard(guard, url)
+            else:
+                network_guard = self._network_guard
+                if network_guard is None:
+                    await route.abort("blockedbyclient")
+                    return
+                await network_guard.authorize_request(url)
+            authorization_complete = True
             await route.continue_()
         except BaseException as error:
             if isinstance(error, asyncio.CancelledError):
                 raise
-            self._blocked_navigation_error = error
+            if is_navigation and is_primary and not authorization_complete:
+                self._blocked_navigation_error = error
             try:
                 await route.abort("blockedbyclient")
             except Exception:
                 self._crashed = True
                 self._ready = False
+
+    async def _route_web_socket(self, web_socket: Any) -> None:
+        guard = self._network_guard
+        if guard is None:
+            return
+        try:
+            await guard.authorize_websocket(str(web_socket.url))
+            connect = getattr(web_socket, "connect", None)
+            if not callable(connect):
+                return
+            await connect()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            # A routed WebSocket is disconnected unless the handler explicitly
+            # connects it, while the SOCKS planner remains authoritative.
+            return
 
     def _install_page_boundaries(self, page: Any) -> None:
         page.on("download", self._handle_download_event)
@@ -628,5 +726,6 @@ __all__ = [
     "BrowserSnapshot",
     "InvalidBrowserInteractionError",
     "NavigationGuard",
+    "PinnedNetworkGuard",
     "PatchrightBrowserAdapter",
 ]

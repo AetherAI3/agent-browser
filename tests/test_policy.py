@@ -128,7 +128,11 @@ async def test_unsafe_schemes_are_rejected(url: str) -> None:
         "172.16.0.1",
         "192.168.1.1",
         "192.0.2.1",
+        "192.0.0.9",
+        "192.88.99.1",
         "198.18.0.1",
+        "198.51.100.1",
+        "203.0.113.1",
         "224.0.0.1",
         "240.0.0.1",
         "255.255.255.255",
@@ -151,8 +155,17 @@ async def test_prohibited_ipv4_ranges_are_rejected(address: str) -> None:
         "ff02::1",
         "2001:db8::1",
         "::ffff:127.0.0.1",
+        "::ffff:8.8.8.8",
         "64:ff9b::7f00:1",
+        "64:ff9b:1::1",
+        "100::1",
+        "100:0:0:1::1",
+        "2001::1",
+        "2001:2::1",
+        "2001:10::1",
         "2002:7f00:1::",
+        "3fff::1",
+        "5f00::1",
     ],
 )
 async def test_prohibited_ipv6_ranges_and_transition_forms_are_rejected(address: str) -> None:
@@ -353,6 +366,74 @@ async def test_dns_answer_order_change_is_not_treated_as_rebinding() -> None:
     guard = NavigationPolicy(resolver).new_guard()
     await guard.validate("https://stable.example.com/one")
     await guard.validate("https://stable.example.com/two")
+    plan = await guard.connection_plan("stable.example.com", 443)
+    assert tuple(str(address) for address in plan.addresses) == (PUBLIC_V4, PUBLIC_V6)
+
+
+@pytest.mark.asyncio
+async def test_connection_plan_refuses_unknown_hostname_and_wrong_port_without_dns() -> None:
+    resolver = FakeResolver({"known.example.com": [PUBLIC_V4]})
+    guard = NavigationPolicy(resolver).new_guard()
+    await guard.authorize_request("https://known.example.com/resource")
+
+    with pytest.raises(PolicyError):
+        await guard.connection_plan("unknown.example.com", 443)
+    with pytest.raises(PolicyError):
+        await guard.connection_plan("known.example.com", 8443)
+
+    assert resolver.calls == ["known.example.com"]
+
+
+@pytest.mark.asyncio
+async def test_http_and_websocket_authorization_share_exact_endpoint_pin() -> None:
+    resolver = FakeResolver({"shared.example.com": [PUBLIC_V4]})
+    guard = NavigationPolicy(resolver).new_guard()
+
+    await guard.authorize_request("https://shared.example.com/app.js")
+    await guard.authorize_websocket("wss://shared.example.com/events")
+
+    assert resolver.calls == ["shared.example.com"]
+    assert (await guard.connection_plan("shared.example.com", 443)).port == 443
+
+
+@pytest.mark.asyncio
+async def test_concurrent_conflicting_first_answers_publish_exactly_one_pin() -> None:
+    entered = 0
+    both_entered = asyncio.Event()
+    release = asyncio.Event()
+
+    async def resolver(_hostname: str) -> list[str]:
+        nonlocal entered
+        entered += 1
+        call_number = entered
+        if entered == 2:
+            both_entered.set()
+        await release.wait()
+        return [PUBLIC_V4 if call_number == 1 else PUBLIC_V4_ALT]
+
+    guard = NavigationPolicy(resolver).new_guard()
+    first = asyncio.create_task(guard.authorize_request("https://race.example.com/a"))
+    second = asyncio.create_task(guard.authorize_request("https://race.example.com/b"))
+    await asyncio.wait_for(both_entered.wait(), timeout=1.0)
+    release.set()
+    results = await asyncio.gather(first, second, return_exceptions=True)
+
+    failures = [result for result in results if isinstance(result, PolicyError)]
+    assert len(failures) == 1
+    assert failures[0].reason is PolicyReason.DNS_REBINDING
+    assert len(guard.endpoint_pins) == 1
+
+
+@pytest.mark.asyncio
+async def test_endpoint_publication_limit_includes_numeric_literals() -> None:
+    guard = NavigationGuard(
+        NavigationPolicy(FakeResolver({}), max_resolutions=4),
+        max_endpoint_pins=1,
+    )
+    await guard.authorize_request("https://8.8.8.8/")
+    with pytest.raises(PolicyError) as raised:
+        await guard.authorize_request("https://1.1.1.1/")
+    assert raised.value.reason is PolicyReason.NAVIGATION_LIMIT
 
 
 @pytest.mark.asyncio

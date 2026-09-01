@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import inspect
+import ipaddress
 import math
 import os
 from collections.abc import Awaitable, Callable
@@ -160,11 +161,63 @@ class _LazySecurity:
         self._auth_settings: Any | None = None
         self._policy: Any | None = None
 
-    async def startup(self, *, auth: bool, policy: bool) -> None:
-        if auth:
-            self._ensure_auth()
-        if policy:
-            self._ensure_policy()
+    async def startup(self) -> None:
+        """Validate the complete production boundary before serving requests.
+
+        Injectable callbacks replace request-time behavior for deterministic
+        tests; they must never bypass listener, token, or test-origin startup
+        validation.
+        """
+
+        self._ensure_auth()
+        self._ensure_policy()
+
+    async def authorize_request(
+        self,
+        request: Request,
+        required: RequiredAuthority,
+    ) -> None:
+        """Authorize one real request without ambiguous proxy/header parsing."""
+
+        self._ensure_auth()
+        module = self._auth_module
+        settings = self._auth_settings
+        if module is None or settings is None:
+            raise BrowserNotReadyError("The authority boundary is unavailable.")
+
+        authorization_values = request.headers.getlist("authorization")
+        if len(authorization_values) > 1:
+            raise module.AuthenticationRequired()
+
+        if settings.tokenless_local_mode:
+            host_values = request.headers.getlist("host")
+            forwarded = any(
+                request.headers.getlist(name)
+                for name in (
+                    "forwarded",
+                    "x-forwarded-for",
+                    "x-forwarded-host",
+                    "x-forwarded-port",
+                    "x-forwarded-proto",
+                    "x-original-host",
+                    "x-real-ip",
+                )
+            )
+            if (
+                len(host_values) != 1
+                or forwarded
+                or not _is_numeric_loopback_host(
+                    host_values[0],
+                    expected_port=self._settings.api_port,
+                )
+            ):
+                # A loopback socket alone is not a browser-origin boundary:
+                # rejecting attacker-controlled Host values closes the common
+                # DNS-rebinding path into tokenless controller authority.
+                raise module.AuthenticationRequired()
+
+        authorization = authorization_values[0] if authorization_values else None
+        await self.authorize(authorization, required)
 
     async def authorize(
         self,
@@ -207,8 +260,9 @@ class _LazySecurity:
             auth_module = importlib.import_module("aether_browser.auth")
         except ImportError:
             raise BrowserNotReadyError("The authority boundary is unavailable.") from None
-        self._auth_module = auth_module
-        self._auth_settings = auth_module.build_auth_settings(
+        # In container mode the listener may bind a wildcard internally while
+        # these effective hosts describe the published exposure boundary.
+        auth_settings = auth_module.build_auth_settings(
             api_bind=self._settings.api_host,
             novnc_bind=self._settings.novnc_host,
             remote_mode=self._settings.remote_mode,
@@ -218,17 +272,30 @@ class _LazySecurity:
             test_mode=self._settings.test_mode,
             test_origins=self._settings.test_origins,
         )
+        if not _is_numeric_loopback_address(self._settings.novnc_host):
+            raise auth_module.AuthConfigurationError()
+        if (
+            auth_settings.tokenless_local_mode
+            and not _is_numeric_loopback_address(self._settings.api_host)
+        ):
+            raise auth_module.AuthConfigurationError()
+        self._auth_module = auth_module
+        self._auth_settings = auth_settings
 
     def _ensure_policy(self) -> None:
         if self._policy is not None:
             return
+        self._ensure_auth()
+        auth_settings = self._auth_settings
+        if auth_settings is None:
+            raise BrowserNotReadyError("The authority boundary is unavailable.")
         try:
             policy_module = importlib.import_module("aether_browser.policy")
         except ImportError:
             raise BrowserNotReadyError("The navigation boundary is unavailable.") from None
         self._policy = policy_module.NavigationPolicy(
-            test_mode=self._settings.test_mode,
-            test_origins=self._settings.test_origins,
+            test_mode=auth_settings.test_mode,
+            test_origins=auth_settings.test_origins,
         )
 
 
@@ -251,21 +318,19 @@ def create_app(
     now = utc_clock or (lambda: datetime.now(UTC))
     security = _LazySecurity(resolved_settings)
     uses_default_authority = authority is None
-    uses_default_policy = navigation_policy is None
-    authority_callback = authority or security.authorize
-    policy_callback = navigation_policy or security.validate_url
+    authority_callback = authority if authority is not None else security.authorize
+    policy_callback = (
+        navigation_policy if navigation_policy is not None else security.validate_url
+    )
 
     if manager is None:
         if adapter_factory is None:
 
             async def default_adapter_factory(_profile: Path) -> PatchrightBrowserAdapter:
-                guard: NavigationGuard
-                redirect_guard: NavigationGuard
-                if uses_default_policy:
-                    guard, redirect_guard = await security.navigation_guards()
-                else:
-                    guard = policy_callback
-                    redirect_guard = policy_callback
+                # Injectable request callbacks are additive test seams.  The
+                # real adapter always receives the stateful core guard whose
+                # immutable pins are authoritative for the SOCKS dialer.
+                guard, redirect_guard = await security.navigation_guards()
                 return PatchrightBrowserAdapter(
                     navigation_guard=guard,
                     redirect_guard=redirect_guard,
@@ -285,11 +350,7 @@ def create_app(
     async def lifespan(application: FastAPI) -> Any:
         application.state.started_at = _aware_timestamp(now())
         try:
-            if uses_default_authority or uses_default_policy:
-                await security.startup(
-                    auth=uses_default_authority,
-                    policy=uses_default_policy,
-                )
+            await security.startup()
             yield
         finally:
             await session_manager.shutdown()
@@ -356,6 +417,9 @@ def create_app(
 
     async def require(request: Request, level: RequiredAuthority) -> None:
         try:
+            if uses_default_authority:
+                await security.authorize_request(request, level)
+                return
             result = authority_callback(request.headers.get("authorization"), level)
             if inspect.isawaitable(result):
                 await result
@@ -572,6 +636,50 @@ def _environment_flag(name: str) -> bool:
     if value == "1":
         return True
     raise ValueError(f"{name} must be exactly '0' or '1'")
+
+
+def _is_numeric_loopback_host(value: str, *, expected_port: int) -> bool:
+    """Reject named or ambiguously ported Host values in tokenless mode."""
+
+    if not value or len(value) > 255 or value != value.strip():
+        return False
+
+    address_text = value
+    port: int | None = None
+    if value.startswith("["):
+        closing = value.find("]")
+        if closing < 0:
+            return False
+        address_text = value[1:closing]
+        suffix = value[closing + 1 :]
+        if suffix:
+            if not suffix.startswith(":") or not suffix[1:].isdecimal():
+                return False
+            port = int(suffix[1:])
+    elif value.count(":") == 1:
+        address_text, port_text = value.rsplit(":", 1)
+        if not port_text.isdecimal():
+            return False
+        port = int(port_text)
+    elif ":" in value:
+        # RFC Host/authority syntax requires brackets around IPv6 literals.
+        return False
+
+    if port is not None and port != expected_port:
+        return False
+    try:
+        address = ipaddress.ip_address(address_text)
+    except ValueError:
+        return False
+    return address.is_loopback and getattr(address, "ipv4_mapped", None) is None
+
+
+def _is_numeric_loopback_address(value: str) -> bool:
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return address.is_loopback and getattr(address, "ipv4_mapped", None) is None
 
 
 def _bounded_int(value: str | None, default: int, minimum: int, maximum: int) -> int:
