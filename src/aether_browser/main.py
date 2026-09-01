@@ -149,8 +149,7 @@ class RuntimeSettings:
         if not _is_numeric_loopback_address(self.api_bind):
             raise ValueError("API must bind to a numeric loopback address")
         if not all(
-            _is_numeric_loopback_address(value)
-            for value in (self.novnc_bind, self.novnc_host)
+            _is_numeric_loopback_address(value) for value in (self.novnc_bind, self.novnc_host)
         ):
             raise ValueError("noVNC must remain numeric-loopback-only")
         if ipaddress.ip_address(self.novnc_bind) != ipaddress.ip_address(self.novnc_host):

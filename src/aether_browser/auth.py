@@ -225,8 +225,7 @@ class AuthSettings:
         effective_api_host = api_bind if api_host is None else api_host
         effective_novnc_host = novnc_bind if novnc_host is None else novnc_host
         if not all(
-            is_loopback_bind(value)
-            for value in (api_bind, novnc_bind, effective_novnc_host)
+            is_loopback_bind(value) for value in (api_bind, novnc_bind, effective_novnc_host)
         ):
             raise _configuration_error()
 
