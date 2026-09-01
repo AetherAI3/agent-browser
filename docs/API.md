@@ -41,7 +41,7 @@ Use `Authorization: Bearer <token>`. In authenticated mode, the observer token p
 
 ## Interaction
 
-Only `click`, `type`, `scroll`, and `press` exist. Click/type require either a selector or an x/y pair, never both. Scroll accepts nonzero bounded deltas. Press accepts only the enumerated keys and combinations. There is no arbitrary JavaScript, CDP, upload, clipboard, download, extension, shell, filesystem, credential, or cookie field.
+Only `click`, `type`, `scroll`, and `press` exist. Click/type require either a selector or an x/y pair, never both. Scroll accepts nonzero bounded deltas. Press accepts only the enumerated keys and combinations; clipboard shortcuts are not allowlisted. Typed text is preserved byte-for-byte after JSON decoding, including leading and trailing whitespace. There is no arbitrary JavaScript, CDP, upload, clipboard, download, extension, shell, filesystem, credential, or cookie field.
 
 ## Error envelope
 

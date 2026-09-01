@@ -2,12 +2,19 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from aether_browser import __version__
 
@@ -18,12 +25,27 @@ MAX_READABLE_TEXT_CHARS = 65_536
 MAX_ACCESSIBILITY_NODES = 500
 
 ApiVersion = Literal["v1"]
-BoundedUrl = Annotated[str, StringConstraints(min_length=1, max_length=2048)]
+BoundedUrl = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=2048),
+]
 BoundedTitle = Annotated[str, StringConstraints(max_length=512)]
 BoundedReadableText = Annotated[str, StringConstraints(max_length=MAX_READABLE_TEXT_CHARS)]
-BoundedSelector = Annotated[str, StringConstraints(min_length=1, max_length=2048)]
+BoundedSelector = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=2048),
+]
 BoundedTypedText = Annotated[str, StringConstraints(max_length=16_384)]
-BoundedMessage = Annotated[str, StringConstraints(min_length=1, max_length=512)]
+BoundedMessage = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=512),
+]
+
+
+def _validate_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() != timedelta(0):
+        raise ValueError("timestamp must use UTC")
+    return value
 
 
 class ClosedModel(BaseModel):
@@ -31,7 +53,6 @@ class ClosedModel(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
-        str_strip_whitespace=True,
         validate_assignment=True,
     )
 
@@ -83,15 +104,9 @@ class AllowedKey(StrEnum):
     PAGE_UP = "PageUp"
     PAGE_DOWN = "PageDown"
     CONTROL_A = "Control+A"
-    CONTROL_C = "Control+C"
-    CONTROL_V = "Control+V"
-    CONTROL_X = "Control+X"
     CONTROL_Z = "Control+Z"
     CONTROL_SHIFT_Z = "Control+Shift+Z"
     META_A = "Meta+A"
-    META_C = "Meta+C"
-    META_V = "Meta+V"
-    META_X = "Meta+X"
     META_Z = "Meta+Z"
     META_SHIFT_Z = "Meta+Shift+Z"
 
@@ -113,6 +128,8 @@ class HealthResponse(ClosedModel):
     slots_available: int = Field(ge=0, le=1)
     started_at: datetime
 
+    _started_at_is_utc = field_validator("started_at")(_validate_utc)
+
 
 class CreateSessionRequest(EmptyRequest):
     max_vision_steps: int = Field(default=DEFAULT_MAX_VISION_STEPS, ge=1, le=100)
@@ -128,10 +145,10 @@ class CreateSessionResponse(ClosedModel):
     created_at: datetime
     expires_at: datetime
 
+    _timestamps_are_utc = field_validator("created_at", "expires_at")(_validate_utc)
+
     @model_validator(mode="after")
     def expiry_follows_creation(self) -> CreateSessionResponse:
-        if self.created_at.tzinfo is None or self.expires_at.tzinfo is None:
-            raise ValueError("timestamps must include a UTC offset")
         if self.expires_at <= self.created_at:
             raise ValueError("expires_at must follow created_at")
         return self
@@ -164,6 +181,8 @@ class NavigateResponse(ClosedModel):
     accessibility: AccessibilitySnapshot
     navigated_at: datetime
 
+    _navigated_at_is_utc = field_validator("navigated_at")(_validate_utc)
+
 
 class SnapshotRequest(SessionRequest):
     pass
@@ -192,6 +211,8 @@ class SnapshotResponse(ClosedModel):
     captured_at: datetime
     vision_steps_used: int = Field(ge=1, le=100)
     vision_steps_remaining: int = Field(ge=0, le=99)
+
+    _captured_at_is_utc = field_validator("captured_at")(_validate_utc)
 
 
 class InteractionTarget(ClosedModel):
@@ -254,6 +275,8 @@ class InteractResponse(ClosedModel):
     sequence: int = Field(ge=1, le=9_223_372_036_854_775_807)
     interacted_at: datetime
 
+    _interacted_at_is_utc = field_validator("interacted_at")(_validate_utc)
+
 
 class EndSessionRequest(SessionRequest):
     pass
@@ -264,6 +287,8 @@ class EndSessionResponse(ClosedModel):
     status: Literal["ended", "already_ended"]
     session_id: UUID
     ended_at: datetime
+
+    _ended_at_is_utc = field_validator("ended_at")(_validate_utc)
 
 
 class ErrorDetail(ClosedModel):

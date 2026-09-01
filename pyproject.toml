@@ -26,9 +26,6 @@ dev = [
   "ruff==0.16.5",
 ]
 
-[project.scripts]
-aether-browser = "aether_browser.main:run"
-
 [tool.setuptools.packages.find]
 where = ["src"]
 

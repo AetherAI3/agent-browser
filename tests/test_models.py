@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -61,6 +61,16 @@ def test_create_timestamps_are_ordered_and_aware() -> None:
             expires_at=created,
         )
 
+    non_utc = datetime.now(timezone(timedelta(hours=5)))
+    with pytest.raises(ValidationError):
+        CreateSessionResponse(
+            session_id=uuid4(),
+            max_vision_steps=25,
+            view_url="http://127.0.0.1:6080/vnc.html",
+            created_at=non_utc,
+            expires_at=non_utc + timedelta(hours=1),
+        )
+
 
 def test_url_and_selector_bounds() -> None:
     with pytest.raises(ValidationError):
@@ -116,3 +126,18 @@ def test_allowlisted_key_combination() -> None:
         key=AllowedKey.CONTROL_A,
     )
     assert request.key is AllowedKey.CONTROL_A
+
+
+def test_clipboard_shortcuts_are_not_allowlisted() -> None:
+    with pytest.raises(ValidationError):
+        InteractRequest(session_id=uuid4(), action="press", key="Control+V")
+
+
+def test_typed_text_preserves_significant_whitespace() -> None:
+    request = InteractRequest(
+        session_id=uuid4(),
+        action="type",
+        target={"selector": "input"},
+        text="  keep me  ",
+    )
+    assert request.text == "  keep me  "
