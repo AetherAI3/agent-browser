@@ -1,0 +1,11 @@
+[Unit]
+Description=Aether Browser CI resource boundary
+
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+IOAccounting=yes
+MemoryHigh=6G
+MemoryMax=8G
+TasksMax=4096

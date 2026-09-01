@@ -1,0 +1,36 @@
+[Unit]
+Description=Aether Browser repository-scoped Actions runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aether-ci-browser01
+Group=aether-ci-browser01
+WorkingDirectory=/srv/aether-ci-browser01/actions-runner
+ExecStart=/srv/aether-ci-browser01/actions-runner/run.sh
+KillMode=control-group
+Restart=always
+RestartSec=10s
+TimeoutStopSec=45s
+Slice=aether-browser-ci.slice
+MemoryHigh=6G
+MemoryMax=8G
+CPUQuota=200%
+TasksMax=4096
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+ReadWritePaths=/srv/aether-ci-browser01/actions-runner /srv/aether-ci-browser01/cache
+InaccessiblePaths=-/run/tailscale -/var/run/docker.sock -/root
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

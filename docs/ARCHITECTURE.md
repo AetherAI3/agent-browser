@@ -41,10 +41,14 @@ The session ID remains explicit in every session-scoped payload so a future mult
   CIDR, an `https` proxy-scheme declaration, disabled test mode, and no test origins.
 - The raw proxy peer and Host authority are validated. Uvicorn proxy-header parsing is disabled,
   and forwarding headers are rejected instead of becoming authority inputs.
-- noVNC remains literal loopback-only and is never included in the remote proxy surface in v0.1.
-- Container gateway integration is pending. Isolated-namespace/gateway or exec-based acceptance
-  must preserve the loopback listener contract rather than widening either bind for reachability.
+- noVNC remains unauthenticated, literal loopback-only, and outside the remote proxy surface in
+  v0.1. The container entrypoint rejects every `AETHER_BROWSER_NOVNC_BIND` value except
+  `127.0.0.1`; its implementation-only raw VNC socket is fixed to `127.0.0.1:5900`.
 - Test-only local origins require explicit test mode and an exact allowlist; production defaults never enable that exception.
+
+The local Compose quickstart uses Linux host networking so those loopback binds are the developer host's loopback interface. There are no published container ports and no noVNC listener on a bridge interface. This local mode joins the host network trust boundary: every process that can access host loopback is trusted, and the Browser container can access host-network services. Docker Desktop bridge networking is not equivalent to this topology. URL and browser-egress policy remain mandatory.
+
+Trusted CI uses a different, stricter topology. The preceding build job publishes the immutable image ID for the exact proved commit; acceptance fails unless that ID still matches the commit-tagged local image and runs containers by ID with pulling disabled. Acceptance then creates one resource-bounded Podman pod with `--network none`; the deterministic fixture and Browser share only that pod's loopback interface. The runner publishes no ports, joins no host or bridge network, and drives readiness, HTTP, WebSocket, and API checks through remote `podman exec` inside the fixture container. Live interface and listener checks prove that the namespace contains only loopback and that API, noVNC, and raw VNC remain bound to `127.0.0.1`. This preserves the real same-display proof without giving release-candidate code internet, production, or host-network access.
 
 ## Browser boundary
 

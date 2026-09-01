@@ -1,0 +1,24 @@
+version: 1
+gates:
+  commit: true
+  push: true
+  agent: true
+checks:
+  format:
+    command: python -m ruff format --check .
+    timeout_seconds: 120
+  lint:
+    command: python -m ruff check .
+    timeout_seconds: 120
+  typing:
+    command: python -m mypy src
+    timeout_seconds: 180
+  unit:
+    command: python -m pytest -q
+    timeout_seconds: 600
+  security_policy:
+    command: python scripts/verify_release.py --security-only && python -m bandit -q -r src
+    timeout_seconds: 180
+  release_integrity:
+    command: python scripts/verify_release.py --manifest-only
+    timeout_seconds: 180
