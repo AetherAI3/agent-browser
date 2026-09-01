@@ -1,0 +1,1 @@
+"""Runtime-only deterministic fixtures."""
