@@ -1,0 +1,20 @@
+# Runtime image allowlist. Keep the first rule broad so new repository paths do
+# not silently enter the remote builder context or the final COPY layer.
+**
+
+# Git metadata is excluded explicitly as a reviewable security invariant.
+.git
+.git/**
+
+# Package metadata and license material needed by the image build.
+!pyproject.toml
+!requirements.lock
+!README.md
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+
+# Runtime code and the one in-image entrypoint.
+!src
+!src/**
+!scripts
+!scripts/container-entrypoint.sh

@@ -20,6 +20,13 @@ The qualified image toolchain is also fixed in the host deployment record: Syft 
 
 The hardened Actions service is a client of the separate rootless Podman API service. Qualification requires `CONTAINER_HOST=unix:///run/aether-ci-browser-podman.sock`, an accessible Unix socket owned by the runner's exact UID/GID with mode `0600`, a server-side rootless result from `podman --remote info`, and a successful read-only `podman --remote ps`. It also requires finite inherited cgroup memory and task ceilings, private 256 MiB tmpfs mounts on both `/tmp` and `/var/tmp`, and continued denial of Docker, Tailscale, other worker homes, and privileged host secrets. The temp mounts are charged to the runner cgroup and cannot consume host-root storage. `podman unshare` is deliberately excluded because it is a local-engine operation unsupported by a remote Podman client.
 
+The repository root `.dockerignore` is a runtime allowlist shared by Docker and Podman builds.
+It excludes Git metadata, tests, workflows, caches, local environments, evidence, and unrelated
+repository material before the context reaches the remote builder; only package metadata,
+license material, `src/**`, and `scripts/container-entrypoint.sh` can enter `COPY . /app`.
+`.containerignore` must remain absent because Podman would give it precedence over this reviewed
+contract.
+
 The local Compose quickstart deliberately uses Linux host networking so its API and unauthenticated browser-view processes can bind the developer host's numeric loopback interface directly. That local-host trust boundary is not the CI topology.
 
 Trusted container acceptance must consume the immutable image ID emitted by the preceding exact-commit build job and use the configured `podman --remote` client to create one resource-bounded pod with `--network none`. Pulling, building, or mutable-tag execution is forbidden in acceptance. The deterministic fixture and Browser join that pod and communicate only over pod-local `127.0.0.1`; every readiness, HTTP, WebSocket, and API probe executes inside the pod. Qualification must retain the image-ID handoff, same-pod identity proof, live loopback-only interface/listener proof, absence of published ports and host/bridge networking, and exact cleanup of the pod. This lets the real headed-browser and same-display checks run without granting release-candidate code arbitrary internet, production, or runner-host network access.

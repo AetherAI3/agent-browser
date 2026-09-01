@@ -136,6 +136,35 @@ def test_package_installs_cannot_escape_the_hash_lock_via_build_isolation() -> N
     assert found_package_install, "the package itself is never installed"
 
 
+def test_container_build_context_is_a_runtime_allowlist_without_git_metadata() -> None:
+    ignore_path = ROOT / ".dockerignore"
+    assert ignore_path.is_file()
+    assert not (ROOT / ".containerignore").exists(), (
+        "Podman gives .containerignore precedence; it must not override the reviewed allowlist"
+    )
+
+    rules = tuple(
+        line
+        for raw_line in _read(ignore_path).splitlines()
+        if (line := raw_line.strip()) and not line.startswith("#")
+    )
+    assert rules == (
+        "**",
+        ".git",
+        ".git/**",
+        "!pyproject.toml",
+        "!requirements.lock",
+        "!README.md",
+        "!LICENSE",
+        "!THIRD_PARTY_NOTICES.md",
+        "!src",
+        "!src/**",
+        "!scripts",
+        "!scripts/container-entrypoint.sh",
+    )
+    assert "COPY . /app" in _read(ROOT / "Dockerfile")
+
+
 def test_runner_temp_storage_is_private_and_cgroup_bounded() -> None:
     text = _read(ROOT / "ops" / "runner" / "aether-browser-runner.service")
 
