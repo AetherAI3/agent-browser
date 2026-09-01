@@ -1,8 +1,9 @@
 # Third-party notices
 
 Aether Browser's own source is licensed under Apache-2.0. This file identifies directly declared
-Python dependencies and directly installed container components. It is an attribution aid, not
-legal advice, and it does not replace the license text shipped by each dependency.
+runtime and build/validation Python dependencies plus directly installed container components. It
+is an attribution aid, not legal advice, and it does not replace the license text shipped by each
+dependency.
 
 The exact versions in `pyproject.toml`, `requirements.lock`, the base-image digest in
 `Dockerfile`, a build SBOM, and the built image's `/usr/share/doc/*/copyright` files are the
@@ -10,7 +11,7 @@ authoritative inventory for a particular build. Transitive packages and Patchrig
 browser payload add further notices. Do not distribute a prebuilt image until that exact
 inventory has been reviewed and the required license texts have been included.
 
-## Direct Python dependencies
+## Direct runtime Python dependencies
 
 | Component | Declared version | Upstream license identified in source | Source |
 |---|---:|---|---|
@@ -24,6 +25,29 @@ inventory has been reviewed and the required license texts have been included.
 Their versions are enumerated in `requirements.lock`; their package metadata and license files
 must be captured by the release SBOM/notices process rather than inferred from the direct
 dependency above them.
+
+## Direct build and validation Python dependencies
+
+The current Dockerfile installs the full `requirements.lock` before installing Aether Browser, so
+the following directly declared tools are present in the candidate image even though they are not
+runtime API dependencies. Their versions are pinned by `requirements.in`, `pyproject.toml`, and the
+hash-locked environment:
+
+| Component | Declared version | Role |
+|---|---:|---|
+| Bandit | 1.9.4 | Python security lint |
+| mypy | 2.3.1 | Static type checking |
+| pip-audit | 2.10.1 | Python dependency vulnerability audit |
+| pytest | 9.1.1 | Test runner |
+| pytest-asyncio | 1.4.0 | Async pytest support |
+| pytest-cov | 7.1.0 | Coverage integration |
+| Ruff | 0.16.5 | Formatting and lint checks |
+| setuptools | 84.0.0 | Package build backend |
+
+Their installed distribution metadata and license texts must be included in the exact-image
+SBOM/notices review. This source notice deliberately defers license classification for that built
+payload to the captured metadata instead of guessing from package names. Binary publication
+remains blocked until that inventory is complete.
 
 ## Browser and display stack
 

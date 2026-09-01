@@ -4,19 +4,16 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import ipaddress
 import json
 import os
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 from typing import Any
 
 
-def validate_api_base(value: str) -> str:
-    """Return a canonical HTTP origin for an explicit numeric-loopback listener."""
-
+def _validated_api_endpoint(value: str) -> tuple[str, int, str]:
     message = "--api-base must be an HTTP numeric-loopback root origin with an explicit port"
     try:
         parsed = urllib.parse.urlsplit(value)
@@ -39,8 +36,15 @@ def validate_api_base(value: str) -> str:
     ):
         raise ValueError(message)
 
-    host = f"[{address.compressed}]" if address.version == 6 else address.compressed
-    return f"http://{host}:{port}"
+    connection_host = address.compressed
+    url_host = f"[{connection_host}]" if address.version == 6 else connection_host
+    return connection_host, port, f"http://{url_host}:{port}"
+
+
+def validate_api_base(value: str) -> str:
+    """Return a canonical HTTP origin for an explicit numeric-loopback listener."""
+
+    return _validated_api_endpoint(value)[2]
 
 
 def request_json(
@@ -50,7 +54,7 @@ def request_json(
     body: dict[str, object] | None = None,
     token: str | None = None,
 ) -> dict[str, Any]:
-    api_origin = validate_api_base(api_base)
+    connection_host, connection_port, api_origin = _validated_api_endpoint(api_base)
     headers = {"Accept": "application/json"}
     data = None
     method = "GET"
@@ -61,21 +65,23 @@ def request_json(
     if token:
         headers["Authorization"] = f"Bearer {token}"
 
-    # The URL origin is canonicalized above without DNS resolution or userinfo.
-    request = urllib.request.Request(  # noqa: S310
-        api_origin + path,
-        data=data,
-        headers=headers,
-        method=method,
-    )
+    # HTTPConnection opens the validated loopback socket directly: it does not consult proxy
+    # environment variables and it never follows redirects.
+    connection = http.client.HTTPConnection(connection_host, connection_port, timeout=30)
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:  # noqa: S310
-            return json.load(response)
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"{path} returned HTTP {exc.code}: {detail}") from exc
-    except urllib.error.URLError as exc:
-        raise RuntimeError(f"could not reach {api_origin}: {exc.reason}") from exc
+        connection.request(method, path, body=data, headers=headers)
+        response = connection.getresponse()
+        payload = response.read()
+        if 300 <= response.status < 400:
+            raise RuntimeError(f"{path} refused HTTP redirect {response.status}")
+        if not 200 <= response.status < 300:
+            detail = payload.decode("utf-8", errors="replace")
+            raise RuntimeError(f"{path} returned HTTP {response.status}: {detail}")
+        return json.loads(payload)
+    except (OSError, http.client.HTTPException) as exc:
+        raise RuntimeError(f"could not reach {api_origin}: {exc}") from exc
+    finally:
+        connection.close()
 
 
 def print_result(label: str, payload: dict[str, Any]) -> None:

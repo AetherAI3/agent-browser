@@ -24,7 +24,7 @@ the README must continue to show the pending-capture notice.
 | Capture operator | Not captured |
 | `assets/demo.mp4` SHA-256 | Asset absent |
 | `assets/demo-poster.png` SHA-256 | Asset absent |
-| `assets/social-preview.png` SHA-256 and dimensions | `4562ec4b176f97dfd6563c5f381bd7f564b8567c592d240f7f7376f79e259999`; 1280×640 |
+| `assets/social-preview.png` and Pages-copy SHA-256 and dimensions | `4562ec4b176f97dfd6563c5f381bd7f564b8567c592d240f7f7376f79e259999`; 1280×640; `docs/assets/social-preview.png` is byte-identical |
 
 ## Social-preview provenance
 
@@ -33,7 +33,9 @@ The preview was created from the owner-supplied Aether Browser logo, whose commi
 `af73b9d1694810fc431cb9fb3fb33a0eb9e21c0ccd36700e10b822291e2feedc`. The generated 2:1 artwork
 was mechanically resized to the required 1280×640 PNG. Its visible API panel uses only the
 implemented v0.1 routes, and its footer states: “Self-hosted Chrome · API control · Live human
-takeover.” It depicts the product contract but does not claim a captured live run.
+takeover.” `docs/assets/` contains byte-identical publication copies of the logo and preview so a
+`/docs` Pages build cannot escape its source root. The artwork depicts the product contract but
+does not claim a captured live run.
 
 ## Required sequence
 

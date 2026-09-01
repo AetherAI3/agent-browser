@@ -40,8 +40,9 @@ fields are in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md).
 ## Quickstart
 
 The supported one-command quickstart uses **Docker Engine on Linux** with Docker Compose v2.
-It builds the source checkout, starts Xvfb, x11vnc, noVNC, the API, and one headed Chromium
-runtime, and binds both user-facing listeners to the host's numeric loopback interface.
+It builds the source checkout and starts Xvfb, x11vnc, noVNC, and the API. That stack can own one
+headed Chromium session, launched by `/browser/session/create`, and both user-facing listeners bind
+to the host's numeric loopback interface.
 
 ```bash
 docker compose up --build
