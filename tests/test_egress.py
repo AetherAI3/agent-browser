@@ -36,8 +36,8 @@ def _domain_request(hostname: str, port: int) -> bytes:
 
 
 async def _close_client(writer: asyncio.StreamWriter) -> None:
-    writer.close()
-    with suppress(BrokenPipeError, ConnectionResetError):
+    with suppress(OSError):
+        writer.close()
         await writer.wait_closed()
 
 
