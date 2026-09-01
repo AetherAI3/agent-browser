@@ -1,0 +1,50 @@
+name: lock-refresh
+
+on:
+  pull_request:
+    paths:
+      - ".github/lock-tooling.txt"
+      - ".github/workflows/lock-refresh.yml"
+      - "requirements.in"
+      - "requirements.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install hash-pinned lock compiler
+        run: >-
+          python -m pip install
+          --require-hashes
+          --only-binary=:all:
+          -r .github/lock-tooling.txt
+      - name: Compile candidate lock
+        run: >-
+          python -m piptools compile
+          --generate-hashes
+          --resolver=backtracking
+          --strip-extras
+          --output-file=requirements.candidate.lock
+          requirements.in
+      - name: Upload candidate lock
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: requirements-lock-${{ github.event.pull_request.head.sha || github.sha }}
+          path: requirements.candidate.lock
+          if-no-files-found: error
+          retention-days: 2
+      - name: Verify committed lock is current
+        run: cmp --silent requirements.candidate.lock requirements.lock
