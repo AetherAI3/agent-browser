@@ -262,18 +262,16 @@ class AuthSettings:
         if test_mode and proxy_configured:
             raise _configuration_error()
 
-        has_observer = observer_token is not None and observer_token != ""
-        has_controller = controller_token is not None and controller_token != ""
+        has_observer = bool(observer_token)
+        has_controller = bool(controller_token)
         authenticated_mode = has_observer or has_controller
         remote_boundary = proxy_configured
 
         if authenticated_mode or remote_boundary:
-            if not has_observer or not has_controller:
+            if not observer_token or not controller_token:
                 raise _configuration_error()
             _validate_strong_token(observer_token)
             _validate_strong_token(controller_token)
-            assert observer_token is not None
-            assert controller_token is not None
             observer_digest = _token_digest(observer_token)
             controller_digest = _token_digest(controller_token)
             if hmac.compare_digest(observer_digest, controller_digest):
@@ -443,8 +441,8 @@ def authorize(
 
     observer_digest = settings._observer_digest
     controller_digest = settings._controller_digest
-    assert observer_digest is not None
-    assert controller_digest is not None
+    if observer_digest is None or controller_digest is None:
+        raise AuthenticationRequired()
 
     # Always perform both fixed-size comparisons before making an authority
     # decision.  This avoids role-dependent comparison short-circuiting.
