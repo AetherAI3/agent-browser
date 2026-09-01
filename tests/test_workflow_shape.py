@@ -123,6 +123,28 @@ def test_staging_smoke_is_manual_exact_main_only() -> None:
     assert text.count("ref: ${{ needs.ref-proof.outputs.sha }}") == 1
 
 
+def test_package_installs_cannot_escape_the_hash_lock_via_build_isolation() -> None:
+    paths = (*_workflow_paths(), ROOT / "Dockerfile")
+
+    found_package_install = False
+    for path in paths:
+        for line in _read(path).splitlines():
+            if "pip install" not in line or "--no-deps" not in line:
+                continue
+            found_package_install = True
+            assert "--no-build-isolation" in line, path
+    assert found_package_install, "the package itself is never installed"
+
+
+def test_runner_temp_storage_is_private_and_cgroup_bounded() -> None:
+    text = _read(ROOT / "ops" / "runner" / "aether-browser-runner.service")
+
+    assert "PrivateTmp=yes" not in text
+    assert "MemoryMax=8G" in text
+    assert "TemporaryFileSystem=/tmp:rw,nosuid,nodev,size=256M,mode=1777" in text
+    assert "TemporaryFileSystem=/var/tmp:rw,nosuid,nodev,size=256M,mode=1777" in text
+
+
 def test_runner_smoke_uses_only_the_private_remote_podman_service() -> None:
     text = _read(ROOT / "scripts" / "runner-smoke.sh")
 

@@ -171,5 +171,5 @@ jobs:
       - name: Install locked dependencies
         run: >-
           python -m pip install --require-hashes -r requirements.lock &&
-          python -m pip install --no-deps -e .
+          python -m pip install --no-build-isolation --no-deps -e .
       - run: python scripts/verify_release.py --strict --skip-external

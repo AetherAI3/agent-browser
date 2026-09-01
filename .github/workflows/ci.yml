@@ -91,7 +91,7 @@ jobs:
       - name: Install locked dependencies
         run: >-
           python -m pip install --require-hashes -r requirements.lock &&
-          python -m pip install --no-deps -e .
+          python -m pip install --no-build-isolation --no-deps -e .
       - name: Format
         run: python -m ruff format --check .
       - name: Lint
@@ -115,7 +115,7 @@ jobs:
       - name: Install locked dependencies
         run: >-
           python -m pip install --require-hashes -r requirements.lock &&
-          python -m pip install --no-deps -e .
+          python -m pip install --no-build-isolation --no-deps -e .
       - run: python -m pytest -q
 
   security:
@@ -132,7 +132,7 @@ jobs:
       - name: Install locked dependencies
         run: >-
           python -m pip install --require-hashes -r requirements.lock &&
-          python -m pip install --no-deps -e .
+          python -m pip install --no-build-isolation --no-deps -e .
       - run: python scripts/verify_release.py --security-only
       - run: python -m bandit -q -r src
       - run: python -m pip_audit --strict --disable-pip -r requirements.lock

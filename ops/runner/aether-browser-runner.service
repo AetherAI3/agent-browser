@@ -19,7 +19,10 @@ MemoryMax=8G
 CPUQuota=200%
 TasksMax=4096
 NoNewPrivileges=yes
-PrivateTmp=yes
+# Host-backed private temp directories still spend host-root capacity. Keep
+# temporary writes private and charge at most 512 MiB to this service's cgroup.
+TemporaryFileSystem=/tmp:rw,nosuid,nodev,size=256M,mode=1777
+TemporaryFileSystem=/var/tmp:rw,nosuid,nodev,size=256M,mode=1777
 PrivateDevices=yes
 ProtectSystem=strict
 ProtectHome=yes

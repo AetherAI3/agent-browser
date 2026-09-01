@@ -31,7 +31,7 @@ WORKDIR /app
 COPY . /app
 
 RUN python -m pip install --require-hashes -r requirements.lock \
-    && python -m pip install --no-deps . \
+    && python -m pip install --no-build-isolation --no-deps . \
     && python -m patchright install --with-deps chromium \
     && groupadd --gid 10001 aether \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin aether \
