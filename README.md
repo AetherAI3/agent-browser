@@ -36,9 +36,9 @@
 > [!IMPORTANT]
 > **Aether Browser v0.1.0 is a private release-candidate build in progress.** This
 > repository is not approved for public release and is not presented as production ready.
-> Runtime and API source are present, while complete security integration, dedicated-runner
+> Runtime, API, authority, navigation, and egress boundaries are present. Dedicated-runner
 > evidence, container acceptance, exact-main CI, and a real demo remain unclaimed until they
-> are merged and independently verified.
+> are independently verified.
 
 ## One browser, two views
 
@@ -51,9 +51,9 @@ same browser session.
 - Structured text and accessibility state come before pixels; screenshots remain available
   when visual context is necessary.
 
-The checked-in runtime already models headed Chrome, structured snapshots, bounded actions,
-and single-session ownership. The noVNC host integration and security-lane convergence are
-still private-RC work, so this README treats them as contracts—not as completed release proof.
+The checked-in runtime models headed Chrome, structured snapshots, bounded actions,
+single-session ownership, fail-closed authority, and pinned browser egress. noVNC host
+integration and full private-RC acceptance still require exact-main proof.
 
 | Surface | Focused v0.1 behavior | Evidence in this checkout |
 |---|---|---|
@@ -62,14 +62,13 @@ still private-RC work, so this README treats them as contracts—not as complete
 | Interaction | `click`, `type`, `scroll`, and `press`; selector-first with bounded coordinate fallback | Runtime source + [API contract](docs/API.md) |
 | Session lifecycle | One UUID session, explicit states, vision budget, expiry, and idempotent end | Runtime source + [architecture contract](docs/ARCHITECTURE.md) |
 | Human view | The same headed display exposed locally through noVNC | Architecture contract; integration proof pending |
-| Authority and navigation | Observer/controller roles plus HTTP(S), redirect, and address-policy checks | Documented contract; security integration pending |
+| Authority and navigation | Observer/controller roles plus HTTP(S), redirect, address, and pinned-egress checks | Source + security tests |
 
 ## Quick start
 
 > [!NOTE]
-> This is the integrated RC launch shape. On the exact docs-only commit in this pull request,
-> the required security modules have not merged into `main` yet, so the command is not presented
-> as runnable proof. Use it after security integration lands and exact-main validation is green.
+> This local command exercises the loopback application shape. It does not start Chrome's Linux
+> display services or constitute container, noVNC, or exact-main release proof.
 
 The integrated Python package requires **Python 3.11+**, an installed Chrome channel usable by
 Patchright, and—on Linux—an active headed display. The package does not itself install or start
@@ -79,13 +78,13 @@ Xvfb, x11vnc, noVNC, or websockify.
 python3.11 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .
-python -m uvicorn aether_browser.main:app --host 127.0.0.1 --port 8092
+python -m aether_browser.main
 ```
 
-This is the intended application entry point and loopback default after convergence. The
-security lane is adding the fail-closed authority and navigation-policy wiring required for the
-RC; until that work is merged, keep both API and noVNC on loopback and do not treat this command
-as a completed quick-start proof.
+Keep both API and noVNC listeners on numeric loopback. Named `localhost`, wildcard binds, and
+direct non-loopback binds are rejected so DNS, container, or interface ambiguity cannot silently
+broaden the authority boundary. The supported module launcher validates and owns the Uvicorn bind
+and disables proxy-header interpretation; do not bypass it with a raw Uvicorn CLI invocation.
 
 | Setting | Current default |
 |---|---:|
@@ -102,8 +101,33 @@ curl http://127.0.0.1:8092/browser/health
 ```
 
 Strict loopback local mode may run without bearer tokens only while remote mode is disabled and
-both listeners remain loopback-bound. Authenticated deployments use distinct observer and
-controller tokens; see the [transport and authority contract](docs/API.md#transport-and-authority).
+both listeners remain numeric-loopback-bound. Authenticated local mode may use distinct observer
+and controller tokens.
+
+### Authenticated remote API
+
+v0.1 never binds the API directly to a remote interface. Remote clients must terminate HTTPS at
+a trusted proxy on the same host, while Aether Browser continues to listen on numeric loopback.
+The deployment must set all of the following or startup fails closed:
+
+- `AETHER_BROWSER_REMOTE_MODE=1`
+- `AETHER_BROWSER_REVERSE_PROXY_EXPOSED=1`
+- a numeric-loopback `AETHER_BROWSER_API_BIND` (normally `127.0.0.1`)
+- a non-loopback `AETHER_BROWSER_API_HOST`
+- `AETHER_BROWSER_TRUSTED_PROXY_CIDR` as one exact loopback `/32` or `/128`
+- `AETHER_BROWSER_TRUSTED_PROXY_SCHEME=https`
+- distinct strong `AETHER_BROWSER_OBSERVER_TOKEN` and
+  `AETHER_BROWSER_CONTROLLER_TOKEN` values
+- `AETHER_BROWSER_TEST_MODE=0` and no `AETHER_BROWSER_TEST_ORIGINS`
+
+The proxy must strip `Forwarded`, every `X-Forwarded-*` header, `X-Real-IP`, and
+`X-Original-Host`; Aether Browser rejects them and validates the raw peer plus Host authority.
+Never proxy port 6080 or the noVNC paths. See the
+[transport and authority contract](docs/API.md#transport-and-authority).
+
+Container gateway integration for this proxy-only contract remains pending. Container
+acceptance must use an isolated namespace/gateway or an exec-based probe; it must not make the
+API or noVNC listener non-loopback merely to make a host-side test reachable.
 
 ## API surface
 
@@ -146,8 +170,8 @@ pretending v0.1 is a multi-worker pool. See the full
 The safety model is intentionally based on a smaller surface:
 
 - API and noVNC defaults are loopback-only; noVNC stays loopback-only in v0.1.
-- Non-loopback API binding requires explicit remote mode and distinct strong observer/controller
-  tokens under the contract.
+- Direct non-loopback API binding is rejected. Remote API use requires the complete trusted
+  same-host HTTPS proxy tuple and distinct strong observer/controller tokens.
 - Top-level HTTP(S) destinations and redirects must be revalidated against credential, scheme,
   address-class, rebinding, and browser-initiated navigation rules.
 - URLs, selectors, input, text, accessibility trees, screenshots, coordinates, timeouts, and
@@ -156,8 +180,8 @@ The safety model is intentionally based on a smaller surface:
   extension, shell, filesystem, credential, or cookie-import operation.
 - Ending, expiry, failure, and shutdown converge on owned-resource cleanup.
 
-These are contract requirements, not a claim that the still-unmerged security and acceptance
-gates have passed. The release candidate must prove them before its status changes.
+These boundaries are implemented, but the release candidate must still prove its remaining
+container, dedicated-runner, exact-main, and acceptance gates before its status changes.
 
 ### Source recovery and exclusions
 

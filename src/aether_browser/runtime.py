@@ -276,11 +276,7 @@ class PatchrightBrowserAdapter:
             return False
 
     async def launch(self, profile_directory: Path) -> None:
-        if (
-            self._patchright is not None
-            or self._context is not None
-            or self._proxy is not None
-        ):
+        if self._patchright is not None or self._context is not None or self._proxy is not None:
             raise BrowserLaunchError("Browser launch was refused.")
         if os.name != "nt" and not os.environ.get("DISPLAY"):
             raise BrowserLaunchError("A headed browser display is unavailable.")
@@ -328,9 +324,7 @@ class PatchrightBrowserAdapter:
                     ],
                 )
                 self._context.set_default_timeout(int(self._action_timeout * 1000))
-                self._context.set_default_navigation_timeout(
-                    int(self._navigation_timeout * 1000)
-                )
+                self._context.set_default_navigation_timeout(int(self._navigation_timeout * 1000))
                 await self._context.route("**/*", self._route_request)
                 route_web_socket = getattr(self._context, "route_web_socket", None)
                 if not callable(route_web_socket):

@@ -14,6 +14,9 @@ from fixtures.runtime_fakes import FakeAdapterFactory, FakeClock
 from aether_browser.main import RequiredAuthority, RuntimeSettings, create_app
 from aether_browser.sessions import SessionManager
 
+OBSERVER_CANARY = "Observer-Api-Canary-0123456789!Alpha"
+CONTROLLER_CANARY = "Controller-Api-Canary-9876543210!Beta"
+
 
 async def allow_authority(
     _authorization: str | None,
@@ -324,14 +327,58 @@ async def test_response_never_contains_unmodeled_runtime_state(tmp_path: Path) -
     assert not any(key in body for key in ("token", "profile", "process", "arguments"))
 
 
-def test_listener_and_effective_host_mismatch_requires_container_mode() -> None:
-    with pytest.raises(ValueError, match="outside container mode"):
+def test_actual_listeners_are_loopback_even_in_container_or_proxy_mode() -> None:
+    with pytest.raises(ValueError, match="numeric loopback"):
         RuntimeSettings(api_bind="0.0.0.0", api_host="127.0.0.1").validate()  # noqa: S104
 
+    with pytest.raises(ValueError, match="numeric loopback"):
+        RuntimeSettings(
+            api_bind="0.0.0.0",  # noqa: S104
+            api_host="browser.example",
+            container_mode=True,
+            remote_mode=True,
+            reverse_proxy_exposed=True,
+            trusted_proxy_cidr="127.0.0.1/32",
+            trusted_proxy_scheme="https",
+        ).validate()
+
     RuntimeSettings(
-        api_bind="0.0.0.0",  # noqa: S104
-        api_host="127.0.0.1",
-        novnc_bind="0.0.0.0",  # noqa: S104
-        novnc_host="127.0.0.1",
-        container_mode=True,
+        api_bind="127.0.0.1",
+        api_host="browser.example",
+        remote_mode=True,
+        reverse_proxy_exposed=True,
+        trusted_proxy_cidr="127.0.0.1/32",
+        trusted_proxy_scheme="https",
+        observer_token=OBSERVER_CANARY,
+        controller_token=CONTROLLER_CANARY,
     ).validate()
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"remote_mode": False},
+        {"reverse_proxy_exposed": False},
+        {"trusted_proxy_cidr": None},
+        {"trusted_proxy_scheme": "http"},
+        {"api_host": "localhost"},
+        {"api_host": "invalid host"},
+        {"observer_token": None},
+        {"controller_token": OBSERVER_CANARY},
+        {"test_mode": True},
+    ],
+)
+def test_runtime_proxy_tuple_is_complete_and_fail_closed(overrides: dict[str, object]) -> None:
+    values: dict[str, object] = {
+        "api_bind": "127.0.0.1",
+        "api_host": "browser.example",
+        "remote_mode": True,
+        "reverse_proxy_exposed": True,
+        "trusted_proxy_cidr": "127.0.0.1/32",
+        "trusted_proxy_scheme": "https",
+        "observer_token": OBSERVER_CANARY,
+        "controller_token": CONTROLLER_CANARY,
+    }
+    values.update(overrides)
+    with pytest.raises(ValueError, match="trusted TLS proxy"):
+        RuntimeSettings(**values).validate()  # type: ignore[arg-type]

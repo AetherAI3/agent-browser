@@ -4,7 +4,33 @@ The v0.1 runtime exposes one closed JSON API. Route names are intentionally stab
 
 ## Transport and authority
 
-Use `Authorization: Bearer <token>`. In authenticated mode, the observer token permits health and snapshot access; the controller token permits create, navigate, interact, and end. Tokens never appear in URLs, responses, logs, screenshots, or examples. Strict loopback local mode may run without tokens only when remote mode is disabled and both API and noVNC listeners are loopback-bound.
+Use `Authorization: Bearer <token>`. In authenticated mode, the observer token permits
+health and snapshot access; the controller token permits create, navigate, interact, and end.
+Tokens never appear in URLs, responses, logs, screenshots, or examples. Strict loopback local
+mode may run without tokens only when remote mode is disabled and both API and noVNC listeners
+are numeric-loopback-bound.
+
+Direct non-loopback API listening is not supported in v0.1, even with bearer tokens. Remote API
+clients are supported only through an explicitly configured same-host TLS reverse proxy. The
+backend remains HTTP on a numeric loopback socket and requires the complete tuple below:
+
+- `AETHER_BROWSER_REMOTE_MODE=1`;
+- `AETHER_BROWSER_REVERSE_PROXY_EXPOSED=1`;
+- a numeric-loopback `AETHER_BROWSER_API_BIND` (normally `127.0.0.1`);
+- a non-loopback `AETHER_BROWSER_API_HOST` matching the external Host authority;
+- an exact loopback `AETHER_BROWSER_TRUSTED_PROXY_CIDR` (`/32` or `/128`);
+- `AETHER_BROWSER_TRUSTED_PROXY_SCHEME=https`; and
+- distinct strong observer and controller tokens;
+- `AETHER_BROWSER_TEST_MODE=0`; and
+- no `AETHER_BROWSER_TEST_ORIGINS`.
+
+Partial proxy configuration fails startup. Uvicorn proxy-header interpretation is disabled.
+`Forwarded`, every `X-Forwarded-*` header, `X-Real-IP`, and `X-Original-Host` are rejected rather
+than trusted. The raw TCP peer must match the configured exact loopback CIDR, and the request
+must carry exactly one Host matching the effective API host. The TLS proxy must strip those
+forwarding headers and must never route the noVNC surface. Start the API through the supported
+`python -m aether_browser.main` launcher; a raw Uvicorn CLI can override validated listener
+settings and is outside the transport contract.
 
 | Route | Observer | Controller |
 |---|---:|---:|

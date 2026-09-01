@@ -8,6 +8,7 @@ import inspect
 import ipaddress
 import math
 import os
+import re
 from collections.abc import Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -15,6 +16,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -59,6 +61,8 @@ from aether_browser.sessions import (
 AuthorityCallback = Callable[[str | None, "RequiredAuthority"], Awaitable[None] | None]
 NavigationPolicyCallback = Callable[[str], Awaitable[None] | None]
 
+_DNS_LABEL_RE = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
+
 
 class RequiredAuthority(StrEnum):
     OBSERVER = "observer"
@@ -75,6 +79,8 @@ class RuntimeSettings:
     container_mode: bool = False
     remote_mode: bool = False
     reverse_proxy_exposed: bool = False
+    trusted_proxy_cidr: str | None = None
+    trusted_proxy_scheme: str | None = None
     test_mode: bool = False
     test_origins: tuple[str, ...] = ()
     observer_token: str | None = field(default=None, repr=False)
@@ -88,14 +94,16 @@ class RuntimeSettings:
         api_host = os.getenv("AETHER_BROWSER_API_HOST", "127.0.0.1")
         novnc_host = os.getenv("AETHER_BROWSER_NOVNC_HOST", "127.0.0.1")
         settings = cls(
-            api_bind=os.getenv("AETHER_BROWSER_API_BIND", api_host),
+            api_bind=os.getenv("AETHER_BROWSER_API_BIND", "127.0.0.1"),
             api_host=api_host,
             api_port=_bounded_int(os.getenv("AETHER_BROWSER_API_PORT"), 8092, 1, 65_535),
-            novnc_bind=os.getenv("AETHER_BROWSER_NOVNC_BIND", novnc_host),
+            novnc_bind=os.getenv("AETHER_BROWSER_NOVNC_BIND", "127.0.0.1"),
             novnc_host=novnc_host,
             container_mode=_environment_flag("AETHER_BROWSER_CONTAINER_MODE"),
             remote_mode=_environment_flag("AETHER_BROWSER_REMOTE_MODE"),
             reverse_proxy_exposed=_environment_flag("AETHER_BROWSER_REVERSE_PROXY_EXPOSED"),
+            trusted_proxy_cidr=os.getenv("AETHER_BROWSER_TRUSTED_PROXY_CIDR"),
+            trusted_proxy_scheme=os.getenv("AETHER_BROWSER_TRUSTED_PROXY_SCHEME"),
             test_mode=_environment_flag("AETHER_BROWSER_TEST_MODE"),
             test_origins=tuple(
                 origin.strip()
@@ -125,17 +133,67 @@ class RuntimeSettings:
         return settings
 
     def validate(self) -> None:
+        if any(
+            type(flag) is not bool
+            for flag in (
+                self.container_mode,
+                self.remote_mode,
+                self.reverse_proxy_exposed,
+                self.test_mode,
+            )
+        ):
+            raise ValueError("listener mode flags must be booleans")
         for value in (self.api_bind, self.api_host, self.novnc_bind, self.novnc_host):
-            if not value.strip() or len(value) > 255:
+            if not isinstance(value, str) or not value.strip() or len(value) > 255:
                 raise ValueError("listener and effective hosts must be bounded")
-        if not self.container_mode and self.api_bind != self.api_host:
-            raise ValueError("API bind and effective host differ outside container mode")
-        if not self.container_mode and self.novnc_bind != self.novnc_host:
-            raise ValueError("noVNC bind and effective host differ outside container mode")
+        if not _is_numeric_loopback_address(self.api_bind):
+            raise ValueError("API must bind to a numeric loopback address")
+        if not all(
+            _is_numeric_loopback_address(value)
+            for value in (self.novnc_bind, self.novnc_host)
+        ):
+            raise ValueError("noVNC must remain numeric-loopback-only")
+        if ipaddress.ip_address(self.novnc_bind) != ipaddress.ip_address(self.novnc_host):
+            raise ValueError("noVNC bind and effective host must match")
+
+        proxy_configured = any(
+            (
+                self.remote_mode,
+                self.reverse_proxy_exposed,
+                self.trusted_proxy_cidr is not None,
+                self.trusted_proxy_scheme is not None,
+            )
+        )
+        if proxy_configured:
+            if not (
+                self.remote_mode
+                and self.reverse_proxy_exposed
+                and self.trusted_proxy_cidr is not None
+                and self.trusted_proxy_scheme == "https"
+                and _is_exact_loopback_cidr(self.trusted_proxy_cidr)
+                and _is_nonloopback_effective_host(self.api_host)
+                and _is_strong_token(self.observer_token)
+                and _is_strong_token(self.controller_token)
+                and self.observer_token != self.controller_token
+                and not self.test_mode
+                and not self.test_origins
+            ):
+                raise ValueError("trusted TLS proxy configuration is incomplete")
+        elif not _is_numeric_loopback_address(self.api_host):
+            raise ValueError("local API effective host must be numeric loopback")
+
+        if not proxy_configured and ipaddress.ip_address(self.api_bind) != ipaddress.ip_address(
+            self.api_host
+        ):
+            raise ValueError("local API bind and effective host must match")
         if not 1 <= self.api_port <= 65_535:
             raise ValueError("API port is outside the supported range")
-        if not 1 <= len(self.view_url) <= 2048:
-            raise ValueError("view URL is outside the supported range")
+        if (
+            not isinstance(self.view_url, str)
+            or not 1 <= len(self.view_url) <= 2048
+            or not _is_loopback_view_url(self.view_url)
+        ):
+            raise ValueError("view URL must remain numeric-loopback-only")
 
 
 class _ApiFault(RuntimeError):
@@ -189,32 +247,25 @@ class _LazySecurity:
         if len(authorization_values) > 1:
             raise module.AuthenticationRequired()
 
-        if settings.tokenless_local_mode:
-            host_values = request.headers.getlist("host")
-            forwarded = any(
-                request.headers.getlist(name)
-                for name in (
-                    "forwarded",
-                    "x-forwarded-for",
-                    "x-forwarded-host",
-                    "x-forwarded-port",
-                    "x-forwarded-proto",
-                    "x-original-host",
-                    "x-real-ip",
-                )
+        host_values = request.headers.getlist("host")
+        forwarded = any(_is_forwarding_header(name) for name in request.headers)
+        if (
+            len(host_values) != 1
+            or forwarded
+            or not _host_matches_effective_authority(
+                host_values[0],
+                expected_host=settings.api_host,
+                expected_port=443 if settings.proxy_mode else self._settings.api_port,
             )
-            if (
-                len(host_values) != 1
-                or forwarded
-                or not _is_numeric_loopback_host(
-                    host_values[0],
-                    expected_port=self._settings.api_port,
-                )
-            ):
-                # A loopback socket alone is not a browser-origin boundary:
-                # rejecting attacker-controlled Host values closes the common
-                # DNS-rebinding path into tokenless controller authority.
+        ):
+            raise module.AuthenticationRequired()
+
+        peer = request.client
+        if settings.proxy_mode:
+            if peer is None or not settings.trusts_proxy_peer(peer.host):
                 raise module.AuthenticationRequired()
+        elif peer is None or not _is_numeric_loopback_address(peer.host):
+            raise module.AuthenticationRequired()
 
         authorization = authorization_values[0] if authorization_values else None
         await self.authorize(authorization, required)
@@ -260,25 +311,20 @@ class _LazySecurity:
             auth_module = importlib.import_module("aether_browser.auth")
         except ImportError:
             raise BrowserNotReadyError("The authority boundary is unavailable.") from None
-        # In container mode the listener may bind a wildcard internally while
-        # these effective hosts describe the published exposure boundary.
         auth_settings = auth_module.build_auth_settings(
-            api_bind=self._settings.api_host,
-            novnc_bind=self._settings.novnc_host,
+            api_bind=self._settings.api_bind,
+            api_host=self._settings.api_host,
+            novnc_bind=self._settings.novnc_bind,
+            novnc_host=self._settings.novnc_host,
             remote_mode=self._settings.remote_mode,
             reverse_proxy_exposed=self._settings.reverse_proxy_exposed,
+            trusted_proxy_cidr=self._settings.trusted_proxy_cidr,
+            trusted_proxy_scheme=self._settings.trusted_proxy_scheme,
             observer_token=self._settings.observer_token,
             controller_token=self._settings.controller_token,
             test_mode=self._settings.test_mode,
             test_origins=self._settings.test_origins,
         )
-        if not _is_numeric_loopback_address(self._settings.novnc_host):
-            raise auth_module.AuthConfigurationError()
-        if (
-            auth_settings.tokenless_local_mode
-            and not _is_numeric_loopback_address(self._settings.api_host)
-        ):
-            raise auth_module.AuthConfigurationError()
         self._auth_module = auth_module
         self._auth_settings = auth_settings
 
@@ -310,6 +356,18 @@ def create_app(
 ) -> FastAPI:
     """Build the API with injectable authority, policy, browser, and clock seams."""
 
+    if all(
+        value is None
+        for value in (
+            manager,
+            adapter_factory,
+            authority,
+            navigation_policy,
+            settings,
+            utc_clock,
+        )
+    ):
+        raise ValueError("use the validated module launcher")
     if manager is not None and adapter_factory is not None:
         raise ValueError("manager and adapter_factory are mutually exclusive")
 
@@ -319,9 +377,7 @@ def create_app(
     security = _LazySecurity(resolved_settings)
     uses_default_authority = authority is None
     authority_callback = authority if authority is not None else security.authorize
-    policy_callback = (
-        navigation_policy if navigation_policy is not None else security.validate_url
-    )
+    policy_callback = navigation_policy if navigation_policy is not None else security.validate_url
 
     if manager is None:
         if adapter_factory is None:
@@ -638,14 +694,20 @@ def _environment_flag(name: str) -> bool:
     raise ValueError(f"{name} must be exactly '0' or '1'")
 
 
-def _is_numeric_loopback_host(value: str, *, expected_port: int) -> bool:
-    """Reject named or ambiguously ported Host values in tokenless mode."""
+def _host_matches_effective_authority(
+    value: str,
+    *,
+    expected_host: str,
+    expected_port: int,
+) -> bool:
+    """Match one canonical Host authority without consulting forwarding headers."""
 
-    if not value or len(value) > 255 or value != value.strip():
+    if not value or len(value) > 255 or value != value.strip() or not value.isascii():
         return False
 
     address_text = value
     port: int | None = None
+    bracketed = value.startswith("[")
     if value.startswith("["):
         closing = value.find("]")
         if closing < 0:
@@ -653,12 +715,13 @@ def _is_numeric_loopback_host(value: str, *, expected_port: int) -> bool:
         address_text = value[1:closing]
         suffix = value[closing + 1 :]
         if suffix:
-            if not suffix.startswith(":") or not suffix[1:].isdecimal():
+            port_text = suffix[1:] if suffix.startswith(":") else ""
+            if not port_text.isdecimal() or str(int(port_text)) != port_text:
                 return False
-            port = int(suffix[1:])
+            port = int(port_text)
     elif value.count(":") == 1:
         address_text, port_text = value.rsplit(":", 1)
-        if not port_text.isdecimal():
+        if not port_text.isdecimal() or str(int(port_text)) != port_text:
             return False
         port = int(port_text)
     elif ":" in value:
@@ -668,18 +731,117 @@ def _is_numeric_loopback_host(value: str, *, expected_port: int) -> bool:
     if port is not None and port != expected_port:
         return False
     try:
-        address = ipaddress.ip_address(address_text)
+        candidate_address = ipaddress.ip_address(address_text)
+    except ValueError:
+        if bracketed:
+            return False
+        return address_text.casefold() == expected_host.casefold()
+    if bracketed and not isinstance(candidate_address, ipaddress.IPv6Address):
+        return False
+    try:
+        expected_address = ipaddress.ip_address(expected_host)
     except ValueError:
         return False
-    return address.is_loopback and getattr(address, "ipv4_mapped", None) is None
+    return (
+        candidate_address == expected_address
+        and getattr(candidate_address, "ipv4_mapped", None) is None
+    )
+
+
+def _is_forwarding_header(name: str) -> bool:
+    normalized = name.casefold()
+    return (
+        normalized == "forwarded"
+        or normalized.startswith("x-forwarded-")
+        or normalized in {"x-original-host", "x-real-ip"}
+    )
 
 
 def _is_numeric_loopback_address(value: str) -> bool:
+    if not isinstance(value, str) or not value or value != value.strip() or "%" in value:
+        return False
+    try:
+        address = ipaddress.ip_address(value)
+    except (TypeError, ValueError):
+        return False
+    return address.is_loopback and getattr(address, "ipv4_mapped", None) is None
+
+
+def _is_nonloopback_effective_host(value: str) -> bool:
+    if (
+        not isinstance(value, str)
+        or not value
+        or value != value.strip()
+        or len(value) > 253
+        or not value.isascii()
+        or any(character in value for character in ("/", "\\", "@", "?", "#", "%"))
+    ):
+        return False
     try:
         address = ipaddress.ip_address(value)
     except ValueError:
+        normalized = value.casefold()
+        return (
+            not normalized.endswith(".")
+            and normalized != "localhost"
+            and not normalized.endswith(".localhost")
+            and re.fullmatch(r"[0-9.]+", normalized) is None
+            and all(_DNS_LABEL_RE.fullmatch(label) is not None for label in normalized.split("."))
+        )
+    return not (
+        address.is_loopback
+        or address.is_unspecified
+        or address.is_multicast
+        or getattr(address, "ipv4_mapped", None) is not None
+    )
+
+
+def _is_strong_token(value: str | None) -> bool:
+    if not isinstance(value, str) or not 32 <= len(value) <= 4_096:
         return False
-    return address.is_loopback and getattr(address, "ipv4_mapped", None) is None
+    if not value.isascii() or not value.isprintable() or any(char.isspace() for char in value):
+        return False
+    diversity = sum(
+        (
+            any(char.islower() for char in value),
+            any(char.isupper() for char in value),
+            any(char.isdigit() for char in value),
+            any(not char.isalnum() for char in value),
+        )
+    )
+    return diversity >= 3
+
+
+def _is_exact_loopback_cidr(value: str) -> bool:
+    if not isinstance(value, str) or not value or value != value.strip():
+        return False
+    try:
+        network = ipaddress.ip_network(value, strict=True)
+    except ValueError:
+        return False
+    address = network.network_address
+    return (
+        network.prefixlen == network.max_prefixlen
+        and address.is_loopback
+        and getattr(address, "ipv4_mapped", None) is None
+        and value == network.with_prefixlen
+    )
+
+
+def _is_loopback_view_url(value: str) -> bool:
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except (TypeError, ValueError):
+        return False
+    return (
+        parsed.scheme in {"http", "https"}
+        and parsed.hostname is not None
+        and _is_numeric_loopback_address(parsed.hostname)
+        and parsed.username is None
+        and parsed.password is None
+        and port is not None
+    )
 
 
 def _bounded_int(value: str | None, default: int, minimum: int, maximum: int) -> int:
@@ -721,18 +883,17 @@ def _aware_timestamp(value: datetime) -> datetime:
     return value
 
 
-app = create_app()
-
-
 def run() -> None:
     """Run the loopback API using validated environment settings."""
 
     settings = RuntimeSettings.from_environment()
+    application = create_app(settings=settings)
     uvicorn.run(
-        "aether_browser.main:app",
+        application,
         host=settings.api_bind,
         port=settings.api_port,
         log_level="info",
+        proxy_headers=False,
     )
 
 
@@ -741,7 +902,10 @@ __all__ = [
     "NavigationPolicyCallback",
     "RequiredAuthority",
     "RuntimeSettings",
-    "app",
     "create_app",
     "run",
 ]
+
+
+if __name__ == "__main__":
+    run()

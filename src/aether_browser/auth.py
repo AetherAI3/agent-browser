@@ -21,6 +21,7 @@ MAX_TOKEN_LENGTH: Final = 4_096
 MAX_AUTHORIZATION_HEADER_LENGTH: Final = 8_192
 
 _BEARER_RE = re.compile(r"(?i:Bearer) ([\x21-\x7e]{1,4096})\Z")
+_DNS_LABEL_RE = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\Z")
 _REDACTED: Final = "<redacted>"
 
 
@@ -83,55 +84,67 @@ def _configuration_error() -> AuthConfigurationError:
     return AuthConfigurationError()
 
 
-def _extract_bind_host(bind: str) -> str:
-    if not isinstance(bind, str) or not bind or bind != bind.strip():
-        raise _configuration_error()
-    if any(ord(character) < 0x21 or ord(character) == 0x7F for character in bind):
-        raise _configuration_error()
-    if any(character in bind for character in ("/", "\\", "@", "?", "#")):
-        raise _configuration_error()
-
-    if bind.startswith("["):
-        match = re.fullmatch(r"\[([^\]]+)](?::([0-9]{1,5}))?", bind)
-        if match is None:
-            raise _configuration_error()
-        host, port_text = match.groups()
-        if port_text is not None and not 1 <= int(port_text) <= 65_535:
-            raise _configuration_error()
-        return host
-
-    # A single colon can unambiguously delimit an IPv4/hostname port.  Two or
-    # more colons are treated as a raw IPv6 literal.
-    if bind.count(":") == 1:
-        host, separator, port_text = bind.rpartition(":")
-        if separator and port_text.isdecimal():
-            if not host or not 1 <= int(port_text) <= 65_535:
-                raise _configuration_error()
-            return host
-    return bind
-
-
 def is_loopback_bind(bind: str) -> bool:
-    """Return whether *bind* names a strict loopback listener.
+    """Return whether *bind* is an unambiguous numeric loopback address."""
 
-    ``localhost`` is accepted because it is the conventional explicit local
-    bind name.  Other hostnames are never resolved here: startup validation
-    must not turn a DNS or hosts-file lookup into an authority decision.
-    """
-
-    try:
-        host = _extract_bind_host(bind).lower().removesuffix(".")
-    except AuthConfigurationError:
-        return False
-    if host == "localhost":
-        return True
-    if "%" in host:
+    if not isinstance(bind, str) or not bind or bind != bind.strip() or "%" in bind:
         return False
     try:
-        address = ipaddress.ip_address(host)
+        address = ipaddress.ip_address(bind)
     except ValueError:
         return False
     return address.is_loopback and getattr(address, "ipv4_mapped", None) is None
+
+
+def _normalize_effective_host(host: str) -> tuple[str, bool]:
+    if (
+        not isinstance(host, str)
+        or not host
+        or host != host.strip()
+        or len(host) > 253
+        or not host.isascii()
+        or any(character in host for character in ("/", "\\", "@", "?", "#", "%"))
+    ):
+        raise _configuration_error()
+
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        normalized = host.casefold()
+        if normalized.endswith(".") or re.fullmatch(r"[0-9.]+", normalized):
+            raise _configuration_error()
+        if any(_DNS_LABEL_RE.fullmatch(label) is None for label in normalized.split(".")):
+            raise _configuration_error()
+        is_loopback = normalized == "localhost" or normalized.endswith(".localhost")
+        return normalized, is_loopback
+
+    if (
+        getattr(address, "ipv4_mapped", None) is not None
+        or address.is_unspecified
+        or address.is_multicast
+    ):
+        raise _configuration_error()
+    return address.compressed.casefold(), address.is_loopback
+
+
+def _parse_exact_loopback_network(
+    value: str | None,
+) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise _configuration_error()
+    try:
+        network = ipaddress.ip_network(value, strict=True)
+    except ValueError:
+        raise _configuration_error() from None
+    address = network.network_address
+    if (
+        network.prefixlen != network.max_prefixlen
+        or not address.is_loopback
+        or getattr(address, "ipv4_mapped", None) is not None
+        or value != network.with_prefixlen
+    ):
+        raise _configuration_error()
+    return network
 
 
 def _validate_strong_token(token: str | None) -> None:
@@ -170,12 +183,17 @@ class AuthSettings:
         "_controller_digest",
         "_observer_digest",
         "_sealed",
+        "_trusted_proxy_network",
         "api_bind",
+        "api_host",
         "novnc_bind",
+        "novnc_host",
         "remote_mode",
         "reverse_proxy_exposed",
         "test_mode",
         "test_origins",
+        "trusted_proxy_cidr",
+        "trusted_proxy_scheme",
     )
 
     def __init__(
@@ -183,8 +201,12 @@ class AuthSettings:
         *,
         api_bind: str,
         novnc_bind: str,
+        api_host: str | None = None,
+        novnc_host: str | None = None,
         remote_mode: bool = False,
         reverse_proxy_exposed: bool = False,
+        trusted_proxy_cidr: str | None = None,
+        trusted_proxy_scheme: str | None = None,
         observer_token: str | None = None,
         controller_token: str | None = None,
         test_mode: bool = False,
@@ -200,24 +222,51 @@ class AuthSettings:
             raise _configuration_error() from None
         if any(not isinstance(origin, str) for origin in origins):
             raise _configuration_error()
-        api_is_loopback = is_loopback_bind(api_bind)
-        novnc_is_loopback = is_loopback_bind(novnc_bind)
-
-        if not novnc_is_loopback:
+        effective_api_host = api_bind if api_host is None else api_host
+        effective_novnc_host = novnc_bind if novnc_host is None else novnc_host
+        if not all(
+            is_loopback_bind(value)
+            for value in (api_bind, novnc_bind, effective_novnc_host)
+        ):
             raise _configuration_error()
+
+        proxy_configured = any(
+            (
+                remote_mode,
+                reverse_proxy_exposed,
+                trusted_proxy_cidr is not None,
+                trusted_proxy_scheme is not None,
+            )
+        )
+        if proxy_configured:
+            if not (
+                remote_mode
+                and reverse_proxy_exposed
+                and trusted_proxy_cidr is not None
+                and trusted_proxy_scheme == "https"
+            ):
+                raise _configuration_error()
+            normalized_api_host, api_host_is_loopback = _normalize_effective_host(
+                effective_api_host
+            )
+            if api_host_is_loopback:
+                raise _configuration_error()
+            trusted_proxy_network = _parse_exact_loopback_network(trusted_proxy_cidr)
+        else:
+            if not is_loopback_bind(effective_api_host):
+                raise _configuration_error()
+            normalized_api_host = ipaddress.ip_address(effective_api_host).compressed.casefold()
+            trusted_proxy_network = None
+
         if origins and not test_mode:
             raise _configuration_error()
-        if test_mode and (not api_is_loopback or remote_mode or reverse_proxy_exposed):
-            raise _configuration_error()
-        if not api_is_loopback and not remote_mode:
-            raise _configuration_error()
-        if reverse_proxy_exposed and not remote_mode:
+        if test_mode and proxy_configured:
             raise _configuration_error()
 
         has_observer = observer_token is not None and observer_token != ""
         has_controller = controller_token is not None and controller_token != ""
         authenticated_mode = has_observer or has_controller
-        remote_boundary = remote_mode or reverse_proxy_exposed or not api_is_loopback
+        remote_boundary = proxy_configured
 
         if authenticated_mode or remote_boundary:
             if not has_observer or not has_controller:
@@ -234,14 +283,21 @@ class AuthSettings:
             observer_digest = None
             controller_digest = None
 
-        self.api_bind = api_bind
-        self.novnc_bind = novnc_bind
+        self.api_bind = ipaddress.ip_address(api_bind).compressed.casefold()
+        self.api_host = normalized_api_host
+        self.novnc_bind = ipaddress.ip_address(novnc_bind).compressed.casefold()
+        self.novnc_host = ipaddress.ip_address(effective_novnc_host).compressed.casefold()
         self.remote_mode = remote_mode
         self.reverse_proxy_exposed = reverse_proxy_exposed
+        self.trusted_proxy_cidr = (
+            trusted_proxy_network.with_prefixlen if trusted_proxy_network is not None else None
+        )
+        self.trusted_proxy_scheme = trusted_proxy_scheme
         self.test_mode = test_mode
         self.test_origins = origins
         self._observer_digest = observer_digest
         self._controller_digest = controller_digest
+        self._trusted_proxy_network = trusted_proxy_network
         self._sealed = True
 
     def __setattr__(self, name: str, value: object) -> None:
@@ -257,14 +313,32 @@ class AuthSettings:
     def authenticated_mode(self) -> bool:
         return not self.tokenless_local_mode
 
+    @property
+    def proxy_mode(self) -> bool:
+        return self.remote_mode and self.reverse_proxy_exposed
+
+    def trusts_proxy_peer(self, peer: str) -> bool:
+        network = self._trusted_proxy_network
+        if network is None or not isinstance(peer, str) or "%" in peer:
+            return False
+        try:
+            address = ipaddress.ip_address(peer)
+        except ValueError:
+            return False
+        return getattr(address, "ipv4_mapped", None) is None and address in network
+
     def to_loggable_dict(self) -> dict[str, object]:
         """Return configuration metadata with no credential material."""
 
         return {
             "api_bind": self.api_bind,
+            "api_host": self.api_host,
             "novnc_bind": self.novnc_bind,
+            "novnc_host": self.novnc_host,
             "remote_mode": self.remote_mode,
             "reverse_proxy_exposed": self.reverse_proxy_exposed,
+            "trusted_proxy_cidr": self.trusted_proxy_cidr,
+            "trusted_proxy_scheme": self.trusted_proxy_scheme,
             "test_mode": self.test_mode,
             "test_origins": self.test_origins,
             "authentication": "bearer" if self.authenticated_mode else "tokenless-loopback",
@@ -274,9 +348,12 @@ class AuthSettings:
         mode = "bearer" if self.authenticated_mode else "tokenless-loopback"
         return (
             "AuthSettings("
-            f"api_bind={self.api_bind!r}, novnc_bind={self.novnc_bind!r}, "
+            f"api_bind={self.api_bind!r}, api_host={self.api_host!r}, "
+            f"novnc_bind={self.novnc_bind!r}, novnc_host={self.novnc_host!r}, "
             f"remote_mode={self.remote_mode!r}, "
             f"reverse_proxy_exposed={self.reverse_proxy_exposed!r}, "
+            f"trusted_proxy_cidr={self.trusted_proxy_cidr!r}, "
+            f"trusted_proxy_scheme={self.trusted_proxy_scheme!r}, "
             f"test_mode={self.test_mode!r}, test_origins={self.test_origins!r}, "
             f"authentication={mode!r}, observer_token={_REDACTED!r}, "
             f"controller_token={_REDACTED!r})"
@@ -291,8 +368,12 @@ def build_auth_settings(
     *,
     api_bind: str,
     novnc_bind: str,
+    api_host: str | None = None,
+    novnc_host: str | None = None,
     remote_mode: bool = False,
     reverse_proxy_exposed: bool = False,
+    trusted_proxy_cidr: str | None = None,
+    trusted_proxy_scheme: str | None = None,
     observer_token: str | None = None,
     controller_token: str | None = None,
     test_mode: bool = False,
@@ -302,9 +383,13 @@ def build_auth_settings(
 
     return AuthSettings(
         api_bind=api_bind,
+        api_host=api_host,
         novnc_bind=novnc_bind,
+        novnc_host=novnc_host,
         remote_mode=remote_mode,
         reverse_proxy_exposed=reverse_proxy_exposed,
+        trusted_proxy_cidr=trusted_proxy_cidr,
+        trusted_proxy_scheme=trusted_proxy_scheme,
         observer_token=observer_token,
         controller_token=controller_token,
         test_mode=test_mode,

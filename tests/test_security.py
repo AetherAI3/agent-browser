@@ -10,14 +10,16 @@ import pytest
 from fastapi import FastAPI
 from fixtures.runtime_fakes import FakeAdapter, FakeAdapterFactory
 
+import aether_browser.main as main_module
 from aether_browser.auth import (
     AuthConfigurationError,
+    AuthSettings,
     Authority,
     AuthorityForbidden,
     authorize,
     build_auth_settings,
 )
-from aether_browser.main import RequiredAuthority, RuntimeSettings, create_app
+from aether_browser.main import RequiredAuthority, RuntimeSettings, create_app, run
 from aether_browser.policy import (
     NavigationPolicy,
     PolicyConfigurationError,
@@ -32,18 +34,57 @@ CONTROLLER_CANARY = "Controller-Security-Canary-9876543210!Beta"
 
 
 @asynccontextmanager
-async def api_client(application: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
+async def api_client(
+    application: FastAPI,
+    *,
+    base_url: str = "http://127.0.0.1",
+    peer: tuple[str, int] = ("127.0.0.1", 12345),
+) -> AsyncIterator[httpx.AsyncClient]:
     async with application.router.lifespan_context(application):
-        transport = httpx.ASGITransport(app=application, raise_app_exceptions=False)
+        transport = httpx.ASGITransport(
+            app=application,
+            raise_app_exceptions=False,
+            client=peer,
+        )
         async with httpx.AsyncClient(
             transport=transport,
-            base_url="http://127.0.0.1",
+            base_url=base_url,
         ) as client:
             yield client
 
 
 def make_manager(factory: FakeAdapterFactory, profile_root: Path) -> SessionManager:
     return SessionManager(factory, profile_root=profile_root)
+
+
+def proxy_auth_settings() -> AuthSettings:
+    return build_auth_settings(
+        api_bind="127.0.0.1",
+        api_host="browser.example",
+        novnc_bind="127.0.0.1",
+        novnc_host="127.0.0.1",
+        remote_mode=True,
+        reverse_proxy_exposed=True,
+        trusted_proxy_cidr="127.0.0.1/32",
+        trusted_proxy_scheme="https",
+        observer_token=OBSERVER_CANARY,
+        controller_token=CONTROLLER_CANARY,
+    )
+
+
+def proxy_runtime_settings(**overrides: object) -> RuntimeSettings:
+    values: dict[str, object] = {
+        "api_bind": "127.0.0.1",
+        "api_host": "browser.example",
+        "remote_mode": True,
+        "reverse_proxy_exposed": True,
+        "trusted_proxy_cidr": "127.0.0.1/32",
+        "trusted_proxy_scheme": "https",
+        "observer_token": OBSERVER_CANARY,
+        "controller_token": CONTROLLER_CANARY,
+    }
+    values.update(overrides)
+    return RuntimeSettings(**values)  # type: ignore[arg-type]
 
 
 @pytest.mark.asyncio
@@ -90,13 +131,7 @@ async def test_exact_container_fixture_origin_can_resolve_private_only_in_test_m
 
 
 def test_observer_controller_matrix_is_operation_independent_and_fail_closed() -> None:
-    settings = build_auth_settings(
-        api_bind="0.0.0.0",
-        novnc_bind="127.0.0.1",
-        remote_mode=True,
-        observer_token=OBSERVER_CANARY,
-        controller_token=CONTROLLER_CANARY,
-    )
+    settings = proxy_auth_settings()
     observer_header = f"Bearer {OBSERVER_CANARY}"
     controller_header = f"Bearer {CONTROLLER_CANARY}"
 
@@ -128,13 +163,7 @@ async def test_redirect_to_mixed_private_dns_is_rejected_without_network() -> No
 
 
 def test_security_canary_tokens_are_absent_from_all_loggable_auth_state() -> None:
-    settings = build_auth_settings(
-        api_bind="0.0.0.0",
-        novnc_bind="127.0.0.1",
-        remote_mode=True,
-        observer_token=OBSERVER_CANARY,
-        controller_token=CONTROLLER_CANARY,
-    )
+    settings = proxy_auth_settings()
     output = repr(settings) + repr(settings.to_loggable_dict())
     assert OBSERVER_CANARY not in output
     assert CONTROLLER_CANARY not in output
@@ -145,18 +174,12 @@ async def test_create_app_uses_real_remote_authority_and_ip_policy(tmp_path: Pat
     manager = make_manager(FakeAdapterFactory(), tmp_path)
     application = create_app(
         manager=manager,
-        settings=RuntimeSettings(
-            api_bind="0.0.0.0",
-            api_host="0.0.0.0",
-            remote_mode=True,
-            observer_token=OBSERVER_CANARY,
-            controller_token=CONTROLLER_CANARY,
-        ),
+        settings=proxy_runtime_settings(),
     )
     observer = {"Authorization": f"Bearer {OBSERVER_CANARY}"}
     controller = {"Authorization": f"Bearer {CONTROLLER_CANARY}"}
 
-    async with api_client(application) as client:
+    async with api_client(application, base_url="https://browser.example") as client:
         missing = await client.get("/browser/health")
         observed = await client.get("/browser/health", headers=observer)
         forbidden = await client.post(
@@ -212,15 +235,18 @@ async def test_injected_doubles_do_not_bypass_fail_closed_startup(tmp_path: Path
         RuntimeSettings(test_origins=("http://127.0.0.1:8765",)),
         RuntimeSettings(api_bind="localhost", api_host="localhost"),
         RuntimeSettings(novnc_bind="localhost", novnc_host="localhost"),
+        proxy_runtime_settings(controller_token=None),
+        proxy_runtime_settings(test_mode=True),
+        RuntimeSettings(view_url="http://example.com:6080/vnc.html"),
     )
     for index, settings in enumerate(unsafe_settings):
-        application = create_app(
-            manager=make_manager(FakeAdapterFactory(), tmp_path / str(index)),
-            authority=injected_authority,
-            navigation_policy=injected_policy,
-            settings=settings,
-        )
-        with pytest.raises(AuthConfigurationError):
+        with pytest.raises((AuthConfigurationError, ValueError)):
+            application = create_app(
+                manager=make_manager(FakeAdapterFactory(), tmp_path / str(index)),
+                authority=injected_authority,
+                navigation_policy=injected_policy,
+                settings=settings,
+            )
             async with application.router.lifespan_context(application):
                 pass
 
@@ -231,15 +257,15 @@ async def test_real_authority_rejects_ambiguous_headers_and_rebinding_host(
 ) -> None:
     remote = create_app(
         manager=make_manager(FakeAdapterFactory(), tmp_path / "remote"),
-        settings=RuntimeSettings(
-            api_bind="0.0.0.0",
-            api_host="0.0.0.0",
-            remote_mode=True,
-            observer_token=OBSERVER_CANARY,
-            controller_token=CONTROLLER_CANARY,
-        ),
+        settings=proxy_runtime_settings(),
     )
-    async with api_client(remote) as client:
+    observer = {"Authorization": f"Bearer {OBSERVER_CANARY}"}
+    async with api_client(remote, base_url="https://browser.example") as client:
+        accepted = await client.get("/browser/health", headers=observer)
+        accepted_default_port = await client.get(
+            "/browser/health",
+            headers={**observer, "Host": "browser.example:443"},
+        )
         duplicate = await client.get(
             "/browser/health",
             headers=[
@@ -247,17 +273,40 @@ async def test_real_authority_rejects_ambiguous_headers_and_rebinding_host(
                 ("Authorization", f"Bearer {CONTROLLER_CANARY}"),
             ],
         )
+        duplicate_host = await client.get(
+            "/browser/health",
+            headers=[
+                ("Authorization", f"Bearer {OBSERVER_CANARY}"),
+                ("Host", "browser.example"),
+                ("Host", "browser.example"),
+            ],
+        )
+        wrong_host = await client.get(
+            "/browser/health",
+            headers={**observer, "Host": "attacker.example"},
+        )
+        forwarded = await client.get(
+            "/browser/health",
+            headers={**observer, "X-Forwarded-For": "127.0.0.1"},
+        )
+    async with api_client(
+        remote,
+        base_url="https://browser.example",
+        peer=("127.0.0.2", 12345),
+    ) as client:
+        wrong_peer = await client.get("/browser/health", headers=observer)
+
+    assert accepted.status_code == 200
+    assert accepted_default_port.status_code == 200
     assert duplicate.status_code == 401
+    assert duplicate_host.status_code == 401
+    assert wrong_host.status_code == 401
+    assert forwarded.status_code == 401
+    assert wrong_peer.status_code == 401
 
     local = create_app(
         manager=make_manager(FakeAdapterFactory(), tmp_path / "local"),
-        settings=RuntimeSettings(
-            api_bind="0.0.0.0",
-            api_host="127.0.0.1",
-            novnc_bind="0.0.0.0",
-            novnc_host="127.0.0.1",
-            container_mode=True,
-        ),
+        settings=RuntimeSettings(),
     )
     async with api_client(local) as client:
         healthy = await client.get("/browser/health")
@@ -278,6 +327,113 @@ async def test_real_authority_rejects_ambiguous_headers_and_rebinding_host(
     assert rebound.status_code == 401
     assert named_loopback.status_code == 401
     assert forwarded.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "[browser.example]",
+        "[127.0.0.1]",
+        "browser.example:0443",
+        "browser.example:444",
+    ],
+)
+@pytest.mark.asyncio
+async def test_proxy_rejects_ambiguous_host_authorities(tmp_path: Path, host: str) -> None:
+    application = create_app(
+        manager=make_manager(FakeAdapterFactory(), tmp_path / "host"),
+        settings=proxy_runtime_settings(),
+    )
+    headers = {"Authorization": f"Bearer {OBSERVER_CANARY}", "Host": host}
+    async with api_client(application, base_url="https://browser.example") as client:
+        response = await client.get("/browser/health", headers=headers)
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_authenticated_local_mode_still_rejects_nonloopback_peer(tmp_path: Path) -> None:
+    application = create_app(
+        manager=make_manager(FakeAdapterFactory(), tmp_path),
+        settings=RuntimeSettings(
+            observer_token=OBSERVER_CANARY,
+            controller_token=CONTROLLER_CANARY,
+        ),
+    )
+    headers = {"Authorization": f"Bearer {OBSERVER_CANARY}"}
+    async with api_client(application, peer=("192.0.2.1", 12345)) as client:
+        response = await client.get("/browser/health", headers=headers)
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "header_name",
+    [
+        "Forwarded",
+        "X-Forwarded-For",
+        "X-Forwarded-Host",
+        "X-Forwarded-Port",
+        "X-Forwarded-Proto",
+        "X-Forwarded-Anything",
+        "X-Real-IP",
+        "X-Original-Host",
+    ],
+)
+@pytest.mark.asyncio
+async def test_proxy_rejects_every_forwarding_header(
+    tmp_path: Path,
+    header_name: str,
+) -> None:
+    application = create_app(
+        manager=make_manager(FakeAdapterFactory(), tmp_path / header_name),
+        settings=proxy_runtime_settings(),
+    )
+    headers = {
+        "Authorization": f"Bearer {OBSERVER_CANARY}",
+        header_name: "attacker-controlled",
+    }
+    async with api_client(application, base_url="https://browser.example") as client:
+        response = await client.get("/browser/health", headers=headers)
+    assert response.status_code == 401
+
+
+def test_environment_loads_complete_proxy_tuple(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("AETHER_BROWSER_API_BIND", "127.0.0.1")
+    monkeypatch.setenv("AETHER_BROWSER_API_HOST", "browser.example")
+    monkeypatch.setenv("AETHER_BROWSER_REMOTE_MODE", "1")
+    monkeypatch.setenv("AETHER_BROWSER_REVERSE_PROXY_EXPOSED", "1")
+    monkeypatch.setenv("AETHER_BROWSER_TRUSTED_PROXY_CIDR", "127.0.0.1/32")
+    monkeypatch.setenv("AETHER_BROWSER_TRUSTED_PROXY_SCHEME", "https")
+    monkeypatch.setenv("AETHER_BROWSER_OBSERVER_TOKEN", OBSERVER_CANARY)
+    monkeypatch.setenv("AETHER_BROWSER_CONTROLLER_TOKEN", CONTROLLER_CANARY)
+
+    settings = RuntimeSettings.from_environment()
+
+    assert settings.trusted_proxy_cidr == "127.0.0.1/32"
+    assert settings.trusted_proxy_scheme == "https"
+
+
+def test_run_disables_uvicorn_proxy_header_trust(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        RuntimeSettings,
+        "from_environment",
+        classmethod(lambda _cls: RuntimeSettings()),
+    )
+    monkeypatch.setattr(
+        "aether_browser.main.uvicorn.run",
+        lambda *args, **kwargs: captured.update({"args": args, **kwargs}),
+    )
+
+    run()
+
+    assert captured["proxy_headers"] is False
+
+
+def test_raw_uvicorn_import_string_entrypoints_are_refused() -> None:
+    assert not hasattr(main_module, "app")
+    with pytest.raises(ValueError, match="validated module launcher"):
+        main_module.create_app()
 
 
 @pytest.mark.asyncio

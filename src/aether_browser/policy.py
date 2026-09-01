@@ -320,13 +320,9 @@ def _address_is_prohibited(address: IPAddress) -> bool:
     # grade NAT, reserved, and future-use ranges.  Explicit properties make the
     # intended policy stable and reviewable across Python data-table changes.
     if isinstance(address, ipaddress.IPv4Address):
-        explicitly_prohibited = any(
-            address in network for network in _PROHIBITED_IPV4_NETWORKS
-        )
+        explicitly_prohibited = any(address in network for network in _PROHIBITED_IPV4_NETWORKS)
     else:
-        explicitly_prohibited = any(
-            address in network for network in _PROHIBITED_IPV6_NETWORKS
-        )
+        explicitly_prohibited = any(address in network for network in _PROHIBITED_IPV6_NETWORKS)
     if (
         explicitly_prohibited
         or address.is_loopback
