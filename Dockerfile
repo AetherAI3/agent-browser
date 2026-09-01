@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
+FROM python:3.14-slim-bookworm@sha256:9ab8d9c8514b44f90cf0029dd42fdd7e9e211e639c8b995304cc04568dee900f
 
 LABEL org.opencontainers.image.title="Aether Browser" \
       org.opencontainers.image.version="0.1.0" \
