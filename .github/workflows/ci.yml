@@ -1,0 +1,142 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+# This workflow executes pull-request code. Every job must remain on an
+# ephemeral GitHub-hosted runner; tests/test_workflow_shape.py enforces that
+# boundary across every pull_request-triggered workflow in the repository.
+jobs:
+  change-map:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Record deterministic change map
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
+            git diff --name-only "${BASE_SHA}...${GITHUB_SHA}" | sort -u > changed-paths.txt
+          else
+            git show --pretty='' --name-only "${GITHUB_SHA}" | sort -u > changed-paths.txt
+          fi
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          paths = [line for line in Path("changed-paths.txt").read_text().splitlines() if line]
+          classes = {
+              "code": any(
+                  path.startswith(("src/", "tests/")) or path == "pyproject.toml"
+                  for path in paths
+              ),
+              "container": any(
+                  path in {"Dockerfile", "docker-compose.yml"}
+                  or path.startswith("scripts/")
+                  for path in paths
+              ),
+              "public_copy": any(
+                  path == "README.md"
+                  or path.startswith(("docs/", "assets/", "examples/"))
+                  for path in paths
+              ),
+              "workflow": any(
+                  path.startswith(".github/") or path == ".aether-ci.yml"
+                  for path in paths
+              ),
+          }
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              for name, selected in classes.items():
+                  output.write(f"{name}={str(selected).lower()}\n")
+          print(
+              json.dumps(
+                  {"sha": os.environ["GITHUB_SHA"], "paths": paths, "classes": classes},
+                  sort_keys=True,
+              )
+          )
+          PY
+
+  quality:
+    needs: change-map
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install locked dependencies
+        run: >-
+          python -m pip install --require-hashes -r requirements.lock &&
+          python -m pip install --no-build-isolation --no-deps -e .
+      - name: Format
+        run: python -m ruff format --check .
+      - name: Lint
+        run: python -m ruff check .
+      - name: Type check
+        run: python -m mypy src
+      - name: Manifest validation
+        run: python scripts/verify_release.py --manifest-only
+
+  unit:
+    needs: change-map
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install locked dependencies
+        run: >-
+          python -m pip install --require-hashes -r requirements.lock &&
+          python -m pip install --no-build-isolation --no-deps -e .
+      - run: python -m pytest -q
+
+  security:
+    needs: change-map
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install locked dependencies
+        run: >-
+          python -m pip install --require-hashes -r requirements.lock &&
+          python -m pip install --no-build-isolation --no-deps -e .
+      - run: python scripts/verify_release.py --security-only
+      - run: python -m bandit -q -r src
+      - run: python -m pip_audit --strict --disable-pip -r requirements.lock
+      - run: >-
+          python -m pytest -q tests/test_auth.py tests/test_policy.py
+          tests/test_security.py tests/test_workflow_shape.py
+      - run: python -m pip check

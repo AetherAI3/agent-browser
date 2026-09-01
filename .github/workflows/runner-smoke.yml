@@ -1,0 +1,75 @@
+name: runner-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact 40-character commit SHA currently at refs/heads/main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-smoke-main
+  cancel-in-progress: true
+
+jobs:
+  ref-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.proof.outputs.sha }}
+    steps:
+      - name: Checkout current main without retaining credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Prove exact current main commit
+        id: proof
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$DEFAULT_BRANCH" = "main"
+          test "$EVENT_REF" = "refs/heads/main"
+          test "${#EVENT_SHA}" -eq 40
+          test "${#EXPECTED_SHA}" -eq 40
+          case "$EVENT_SHA" in (*[!0-9a-f]*) exit 1 ;; esac
+          case "$EXPECTED_SHA" in (*[!0-9a-f]*) exit 1 ;; esac
+          test "$EXPECTED_SHA" = "$EVENT_SHA"
+          test "$(git rev-parse --verify HEAD^{commit})" = "$EVENT_SHA"
+          printf 'sha=%s\n' "$EVENT_SHA" >> "$GITHUB_OUTPUT"
+
+  runner-smoke:
+    needs: ref-proof
+    runs-on: [self-hosted, linux, x64, aetherbrowser-staging]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout proved commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ref-proof.outputs.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout
+        shell: bash
+        env:
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+      - name: Verify toolchain and isolation
+        shell: bash
+        run: bash scripts/runner-smoke.sh | tee runner-smoke.json
+      - name: Upload sanitized smoke evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runner-smoke-${{ github.sha }}
+          path: runner-smoke.json
+          if-no-files-found: error
+          retention-days: 7

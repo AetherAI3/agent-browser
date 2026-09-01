@@ -1,0 +1,175 @@
+name: trusted-runner
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact 40-character commit SHA currently at refs/heads/main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: trusted-runner-main
+  cancel-in-progress: true
+
+env:
+  PYTHONUNBUFFERED: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+# No pull_request trigger is permitted here. A GitHub-hosted job first proves
+# that the event and checkout name the exact current main commit. Only that SHA
+# is handed to the persistent, repository-scoped runner.
+jobs:
+  ref-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.proof.outputs.sha }}
+    steps:
+      - name: Checkout current main without retaining credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Prove exact reviewed main commit
+        id: proof
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$DEFAULT_BRANCH" = "main"
+          test "$EVENT_REF" = "refs/heads/main"
+          test "${#EVENT_SHA}" -eq 40
+          case "$EVENT_SHA" in (*[!0-9a-f]*) exit 1 ;; esac
+          checkout_sha="$(git rev-parse --verify HEAD^{commit})"
+          test "$checkout_sha" = "$EVENT_SHA"
+          case "$EVENT_NAME" in
+            push)
+              ;;
+            workflow_dispatch)
+              test "${#EXPECTED_SHA}" -eq 40
+              case "$EXPECTED_SHA" in (*[!0-9a-f]*) exit 1 ;; esac
+              test "$EXPECTED_SHA" = "$EVENT_SHA"
+              ;;
+            *)
+              exit 1
+              ;;
+          esac
+          printf 'sha=%s\n' "$EVENT_SHA" >> "$GITHUB_OUTPUT"
+
+  container:
+    needs: ref-proof
+    runs-on: [self-hosted, linux, x64, aetherbrowser-ci]
+    timeout-minutes: 30
+    outputs:
+      image_id: ${{ steps.image_proof.outputs.image_id }}
+    steps:
+      - name: Checkout proved commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ref-proof.outputs.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout and remote rootless engine
+        shell: bash
+        env:
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+          test "${CONTAINER_HOST:-}" = "unix:///run/aether-ci-browser-podman.sock"
+          test -S /run/aether-ci-browser-podman.sock
+          test "$(podman info --format '{{.Host.Security.Rootless}}')" = "true"
+          podman ps --all --format '{{.ID}}' >/dev/null
+      - name: Rootless build
+        run: |
+          podman pull docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
+          podman build --pull=never --tag aether-browser:${GITHUB_SHA} .
+      - name: Inspect non-root image and layers
+        id: image_proof
+        run: |
+          test "$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Config.User}}')" = "10001:10001"
+          image_id="$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')"
+          test "${#image_id}" -eq 71
+          case "$image_id" in (sha256:*) ;; (*) exit 1 ;; esac
+          case "${image_id#sha256:}" in (*[!0-9a-f]*) exit 1 ;; esac
+          printf 'image_id=%s\n' "$image_id" >> "$GITHUB_OUTPUT"
+          podman history --no-trunc aether-browser:${GITHUB_SHA} > image-history.txt
+          ! grep -E '(github_pat_|ghp_|BEGIN (RSA |OPENSSH )?PRIVATE KEY)' image-history.txt
+      - name: Generate SBOM
+        run: |
+          mkdir -p artifacts
+          syft aether-browser:${GITHUB_SHA} --output spdx-json=artifacts/sbom.spdx.json
+      - name: Scan image vulnerabilities
+        run: >-
+          grype sbom:artifacts/sbom.spdx.json --fail-on high --only-fixed
+          --output json > artifacts/vulnerabilities.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: container-evidence-${{ github.sha }}
+          path: |
+            artifacts/sbom.spdx.json
+            artifacts/vulnerabilities.json
+            image-history.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  acceptance:
+    needs: [ref-proof, container]
+    runs-on: [self-hosted, linux, x64, aetherbrowser-ci]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout proved commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ref-proof.outputs.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout
+        shell: bash
+        env:
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+      - name: Run isolated acceptance
+        env:
+          AETHER_ACCEPTANCE_IMAGE_ID: ${{ needs.container.outputs.image_id }}
+        run: bash scripts/acceptance.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: acceptance-evidence-${{ github.sha }}
+          path: artifacts/acceptance.json
+          if-no-files-found: error
+          retention-days: 14
+
+  release-integrity:
+    needs: [ref-proof, acceptance]
+    runs-on: [self-hosted, linux, x64, aetherbrowser-ci]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout proved commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ref-proof.outputs.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout
+        shell: bash
+        env:
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install locked dependencies
+        run: >-
+          python -m pip install --require-hashes -r requirements.lock &&
+          python -m pip install --no-build-isolation --no-deps -e .
+      - run: python scripts/verify_release.py --strict --skip-external

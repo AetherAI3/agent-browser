@@ -32,6 +32,10 @@ forwarding headers and must never route the noVNC surface. Start the API through
 `python -m aether_browser.main` launcher; a raw Uvicorn CLI can override validated listener
 settings and is outside the transport contract.
 
+The v0.1 local Compose profile serves noVNC without application authentication, so it enforces the exact numeric listener `127.0.0.1` and uses Linux host networking rather than a wildcard container listener plus port publishing. Its implementation-only raw VNC socket is also unauthenticated and fixed to `127.0.0.1:5900`. Treat every process and user able to access the host loopback interface as trusted with the live browser view. Do not expose either view port through a tunnel, reverse proxy, or container bridge.
+
+Release acceptance instead consumes the immutable image ID from the preceding exact-commit build, disables pulling, places the Browser and deterministic fixture in the same `--network none` Podman namespace, and accesses these loopback endpoints only through remote execution inside the pod. CI publishes no API, noVNC, VNC, or fixture port to its runner host.
+
 | Route | Observer | Controller |
 |---|---:|---:|
 | `GET /browser/health` | yes | yes |
