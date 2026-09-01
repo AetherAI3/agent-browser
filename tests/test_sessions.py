@@ -645,8 +645,7 @@ async def test_navigation_policy_denial_happens_before_the_adapter_call(tmp_path
                     "url": "https://blocked.invalid",
                 },
             )
+        assert response.status_code == 403
+        assert adapter.calls == calls_before_request
     finally:
         await manager.shutdown()
-
-    assert response.status_code == 403
-    assert adapter.calls == calls_before_request
