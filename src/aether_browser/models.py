@@ -18,7 +18,7 @@ from pydantic import (
 
 from aether_browser import __version__
 
-API_VERSION = "v1"
+API_VERSION: Literal["v1"] = "v1"
 DEFAULT_MAX_VISION_STEPS = 25
 MAX_SCREENSHOT_BASE64_CHARS = 14_000_000
 MAX_READABLE_TEXT_CHARS = 65_536
