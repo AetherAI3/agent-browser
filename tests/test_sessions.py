@@ -484,9 +484,7 @@ async def test_absolute_deadline_overrun_never_commits_success(
     profile = adapter.launched_profile
 
     if operation == "navigate":
-        pending = asyncio.create_task(
-            manager.navigate(created.session_id, "https://example.com")
-        )
+        pending = asyncio.create_task(manager.navigate(created.session_id, "https://example.com"))
     elif operation == "snapshot":
         pending = asyncio.create_task(manager.snapshot(created.session_id))
     else:
