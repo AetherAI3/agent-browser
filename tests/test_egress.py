@@ -291,7 +291,11 @@ async def test_concurrency_limit_rejects_excess_connection_without_wait_queue() 
         second_reader, second_writer = await _open_client(proxy)
         second_writer.write(b"\x05\x01\x00")
         await second_writer.drain()
-        assert await asyncio.wait_for(second_reader.read(), timeout=1.0) == b""
+        try:
+            refusal = await asyncio.wait_for(second_reader.read(), timeout=1.0)
+        except ConnectionResetError:
+            refusal = b""
+        assert refusal == b""
     finally:
         release_dial.set()
         await _close_client(first_writer)
