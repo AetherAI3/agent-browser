@@ -51,7 +51,7 @@ async def _drain_owned_task(
         except asyncio.CancelledError as error:
             cancellation = cancellation or error
         except Exception:
-            pass
+            break
     return cancellation
 
 

@@ -150,7 +150,7 @@ async def _drain_owned_task(
         except Exception:
             # The synchronous result inspection by the owner preserves the
             # child's typed failure after the child has finished.
-            pass
+            break
     return cancellation
 
 
