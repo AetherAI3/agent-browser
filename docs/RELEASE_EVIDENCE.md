@@ -48,6 +48,42 @@ Passing gate checks at the runtime commit: `required-core-files`, `required-sour
 `container-loopback-contract`, `readme-integrity`, `unsupported-claims`, `quality`, and
 `dependency-audit`.
 
+### Strict-gate closure
+
+Once the evidence artifacts above were committed, the `release-evidence` workflow re-ran on the
+resulting commit `2ebdf2c84b5d166cda8174bb748e183e027ae910` and the strict gate passed with every
+job green:
+[run 33614883928](https://github.com/AetherAI3/aetherbrowser/actions/runs/33614883928) —
+`ref-proof`, `container`, `quickstart`, `acceptance`, and `release-integrity` all reported
+`success`. The matching exact-commit `ci` run also succeeded:
+[run 33614883864](https://github.com/AetherAI3/aetherbrowser/actions/runs/33614883864).
+
+The machine-readable attestation emitted by that run is committed verbatim at
+[`release/evidence/manifest.json`](../release/evidence/manifest.json), which records
+`"strict_gate": "success"`.
+
+### Reading the two commits
+
+Two commit IDs appear in this evidence and they mean different things:
+
+- **Runtime commit** `055f68787833c7e00e13ccbe0c0ecb69a8da3659` is the code under test. Every
+  runtime proof — the image build, isolated acceptance, quickstart, and the committed demo media —
+  was produced from it.
+- **Evidence commit** `2ebdf2c84b5d166cda8174bb748e183e027ae910` is the runtime commit plus the
+  evidence artifacts themselves. The gate enforces that the runtime commit is an ancestor of the
+  evidence checkout and that the entire difference between them is confined to `assets/demo.mp4`,
+  `assets/demo-poster.png`, `docs/DEMO_EVIDENCE.md`, `docs/RELEASE_EVIDENCE.md`, and
+  `release/evidence/manifest.json`. No executable source changed after the runtime proofs.
+
+Because the evidence commit adds files to the build context, the confirmation run necessarily built
+a different image
+(`sha256:fd584c0a88cad812c7d5761eb7732a67a9069bb25cf01d520d144445e93d1c1a`) than the runtime image
+(`sha256:a9253e91fcda87e56dd0c695f68a2da3e9defad7a3e347faa71c060c78a4b101`). Its acceptance suite
+independently returned PASS over the same 33 checks against that image using a freshly generated
+proof color and nonce, which shows the visual binding is generated per run rather than fixed. The
+committed demo media remains the runtime-commit capture and was not replaced by the confirmation
+run.
+
 ## Vulnerability posture
 
 Grype ran against the exact image with `--fail-on high --only-fixed` and did not block the build:
