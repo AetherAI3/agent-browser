@@ -1,18 +1,18 @@
 {
   "artifact_sha256": {
-    "container/acceptance.json": "9787153ef353e873dd391c8210e7f1c6d45605c2ccac0a1d5eb4b51faa61788e",
+    "container/acceptance.json": "f5646cd6dc82cb4d9cad426c1b4b0ca8251690f8e168567a2c5d05f8247f840f",
     "container/browser-package.txt": "db9882ed29a356409305bd1b81e6a0e3effeaea082a206b5e7d1c1a923feb729",
-    "container/demo-frames/api-before.png": "2fa371f7aa5350277bc56f201f5fc5de0f6fdd9daac4fe4a191b17fdd49ce117",
-    "container/demo-frames/display-after.png": "a7a213304dca37e3f44cfc76aa4ac7685e9d089969a2046dbb88693ec149c35c",
-    "container/generated-assets/SHA256SUMS": "e3c83428b7d999d7af86dc8644f15abe54bc04630390a47ee0072b045ddf35b0",
-    "container/generated-assets/demo-poster.png": "a7a213304dca37e3f44cfc76aa4ac7685e9d089969a2046dbb88693ec149c35c",
-    "container/generated-assets/demo.mp4": "ec005ac5a06c108af89e2ebba810edd523d50fd5fd79532701ca920215c7ba58",
-    "container/image-history.txt": "c61ac7e2178c4a9e9eab3dd17dc6703e83c4226e7cbb1602f5e2dd6f6fa32dbc",
+    "container/demo-frames/api-before.png": "f03b4d71fe69767bce61fc6faf561c328493050af2e00cb685faefe8e0438d90",
+    "container/demo-frames/display-after.png": "697b0459566c2c70ca4c845300fc63bc480291ef15108ad4c990cfa114b4d8f4",
+    "container/generated-assets/SHA256SUMS": "01f123e9356d49add62cc5d3c77ac3da5dfd18acc08195f336ed69e5c0fbb85d",
+    "container/generated-assets/demo-poster.png": "697b0459566c2c70ca4c845300fc63bc480291ef15108ad4c990cfa114b4d8f4",
+    "container/generated-assets/demo.mp4": "c08f6856c1c72bbce215b9f159f0d33a8764924a986dc1d58d8aaf032ea1ba7f",
+    "container/image-history.txt": "59330c0b39bc0697bb927d6eb2254cda255d87530986dafeaf0c209b1aa46ebe",
     "container/installed-notices.tar.gz": "b0ed7eadfa2872fe0a7366c871c2652282a299d0bdbc7df50b3eb8b186bf4cc7",
     "container/python-distributions.json": "efbd608e64094681beb47df7e556b107099f8061255d8cb81eb91903930334fd",
-    "container/sbom.spdx.json": "66109e9e6856cc684dec377c118bdfcab7dafbdffdfa1ef186c4525f7effad9f",
-    "container/vulnerabilities.json": "2d0eaef60a847c36d181f6f7f7def0d0f6eeddb4201b0575f27a0fc255228f87",
-    "quickstart/quickstart.json": "ab76d875a1e66e4767a7890a8e54cc66331c7f595309f3cd50468d7305a73079"
+    "container/sbom.spdx.json": "2e9f0a3820e1cf26a9d0003016aeba3f419567840a4b2a1fbfb56adde384024c",
+    "container/vulnerabilities.json": "0eed782e1acb775ea19df9e68eda520c51100731ce0b6353dcc749966c6cbcb1",
+    "quickstart/quickstart.json": "e8dd92fc7c935e9463307d7cf886f46c4ec47ba646ff171d1850f466450ae52c"
   },
   "host_attestation": {
     "failed_scope": [
@@ -32,10 +32,10 @@
     "run_url": "https://github.com/AetherAI3/ATSv2/actions/runs/33504063351",
     "toolchain_result": "failed; workload execution is independent and ephemeral hosted"
   },
-  "image_id": "sha256:f8da19430ef274e440e5e71bca2095f3c1f8ff01d64011131ba91a4f13b65508",
+  "image_id": "sha256:375fbda90a3bcf5ed49dd17dd5dcdaa5207a73938e3b0edf001948a2d248dbf4",
   "repository": "AetherAI3/agent-browser",
-  "run_url": "https://github.com/AetherAI3/agent-browser/actions/runs/33628740705",
+  "run_url": "https://github.com/AetherAI3/agent-browser/actions/runs/33648172057",
   "schema_version": 1,
   "strict_gate": "success",
-  "tested_commit": "e4ead31394545aade89ea2b9fba36b39ace63baa"
+  "tested_commit": "beba3a63fee1ce217a7bdad1cce1c4bb7b27e87f"
 }
