@@ -27,15 +27,21 @@
 </p>
 
 > [!IMPORTANT]
-> **Private v0.1.0 release-candidate work is in progress.** The repository is not approved for
-> public release, and Aether Browser is not presented as a hosted service. Exact-main container,
-> dedicated-runner, acceptance, and demo evidence must be recorded before the RC is complete.
+> **Aether Browser v0.1.0 is a source-first, self-hosted release candidate.** It is not a hosted
+> service. Prebuilt container publication remains intentionally disabled until the exact-image
+> third-party notice bundle receives a separate distribution review.
 
 ### Exact-release demo
 
-The demo will appear here only after it is captured from the exact tested release commit. No
-mock or earlier-build media is substituted. The capture checklist and currently unfilled proof
-fields are in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md).
+<p align="center">
+  <a href="assets/demo.mp4">
+    <img src="assets/demo-poster.png" alt="Aether Browser exact-image runtime demo" width="760">
+  </a>
+</p>
+
+The poster and video are assembled from real API and same-display frames captured during the
+immutable-image acceptance run. Their commit, image ID, workflow run, and checksums are recorded
+in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md); the social preview is not runtime proof.
 
 ## Quickstart
 

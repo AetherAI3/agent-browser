@@ -6,9 +6,32 @@ if ! command -v podman >/dev/null 2>&1; then
   exit 1
 fi
 podman_cli=(podman --remote)
-expected_container_host="unix:///run/aether-ci-browser-podman.sock"
+default_podman_socket="/run/aether-ci-browser-podman.sock"
+podman_socket="$default_podman_socket"
+if [ -n "${AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET:-}" ]; then
+  if [ "${GITHUB_ACTIONS:-}" != "true" ] || [ -z "${RUNNER_TEMP:-}" ]; then
+    echo '{"result":"FAIL","reason":"ephemeral Podman override is not authorized"}'
+    exit 1
+  fi
+  case "$AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET" in
+    ("$RUNNER_TEMP"/*)
+      podman_socket="$AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET"
+      ;;
+    (*)
+      echo '{"result":"FAIL","reason":"ephemeral Podman socket is outside runner temp"}'
+      exit 1
+      ;;
+  esac
+fi
+expected_container_host="unix://${podman_socket}"
 if [ "${CONTAINER_HOST:-}" != "$expected_container_host" ]; then
   echo '{"result":"FAIL","reason":"the private Podman service is not configured"}'
+  exit 1
+fi
+if [ ! -S "$podman_socket" ] \
+  || [ "$(stat -Lc '%u:%g:%a' "$podman_socket" 2>/dev/null || true)" \
+    != "$(id -u):$(id -g):600" ]; then
+  echo '{"result":"FAIL","reason":"the private Podman socket identity is invalid"}'
   exit 1
 fi
 if [ "$("${podman_cli[@]}" info --format '{{.Host.Security.Rootless}}' 2>/dev/null || true)" != "true" ]; then
@@ -27,6 +50,7 @@ novnc_port="${AETHER_ACCEPTANCE_NOVNC_PORT:-16080}"
 fixture_port="${AETHER_ACCEPTANCE_FIXTURE_PORT:-18080}"
 expected_sha="${GITHUB_SHA:-}"
 expected_image_id="${AETHER_ACCEPTANCE_IMAGE_ID:-}"
+capture_dir="${AETHER_ACCEPTANCE_CAPTURE_DIR:-}"
 pod_created=false
 
 cleanup() {
@@ -376,6 +400,18 @@ PY
   | base64 --decode > "$work_dir/api.png"
 "${podman_cli[@]}" exec "$browser" base64 /tmp/display-proof.png \
   | base64 --decode > "$work_dir/display.png"
+if [ -n "$capture_dir" ]; then
+  case "$capture_dir" in
+    (artifacts/*) ;;
+    (*)
+      echo '{"result":"FAIL","reason":"capture output must remain below artifacts"}'
+      exit 1
+      ;;
+  esac
+  mkdir -p -- "$capture_dir"
+  install -m 0644 "$work_dir/api.png" "$capture_dir/api-before.png"
+  install -m 0644 "$work_dir/display.png" "$capture_dir/display-after.png"
+fi
 if ! "${podman_cli[@]}" exec "$browser" \
   sh -c "ps -eo args | grep -q '[x]11vnc -display :99'"; then
   echo '{"result":"FAIL","reason":"x11vnc is not attached to the browser display"}'

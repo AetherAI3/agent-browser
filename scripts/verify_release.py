@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import os
 import re
 import shutil
 import struct
@@ -406,7 +407,12 @@ def _container_loopback_contract() -> tuple[bool, str]:
 
     acceptance_contract = (
         "podman_cli=(podman --remote)",
-        'expected_container_host="unix:///run/aether-ci-browser-podman.sock"',
+        'default_podman_socket="/run/aether-ci-browser-podman.sock"',
+        "AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET",
+        '"${GITHUB_ACTIONS:-}" != "true"',
+        '"$RUNNER_TEMP"/*',
+        "stat -Lc '%u:%g:%a'",
+        '"$(id -u):$(id -g):600"',
         'expected_sha="${GITHUB_SHA:-}"',
         'expected_image_id="${AETHER_ACCEPTANCE_IMAGE_ID:-}"',
         "image inspect \"$image_tag\" --format '{{.Id}}'",
@@ -451,8 +457,9 @@ def _container_loopback_contract() -> tuple[bool, str]:
     workflow_handoff = (
         "id: image_proof",
         "image_id: ${{ steps.image_proof.outputs.image_id }}",
-        "image_id=\"$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"",
-        "AETHER_ACCEPTANCE_IMAGE_ID: ${{ needs.container.outputs.image_id }}",
+        'image_id="$(podman --remote image inspect '
+        "aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"",
+        "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}",
     )
     if any(fragment not in trusted_workflow for fragment in workflow_handoff):
         issues.append("trusted workflow lacks the immutable image-ID handoff")
@@ -487,10 +494,38 @@ def _release_evidence() -> tuple[bool, str]:
     if not ok:
         return False, head
     head = head.strip().splitlines()[-1]
+    workflow_commit = os.environ.get("AETHER_RELEASE_EVIDENCE_COMMIT", head)
+    if workflow_commit != head:
+        return False, f"workflow attestation={workflow_commit}; checkout={head}"
     text = path.read_text(encoding="utf-8")
-    match = re.search(r"(?im)^Tested commit:\s*`?([0-9a-f]{40})`?\s*$", text)
-    actual = match.group(1) if match else "MISSING"
-    return actual == head, f"evidence={actual}; checkout={head}"
+    match = re.search(r"(?im)^Tested runtime commit:\s*`?([0-9a-f]{40})`?\s*$", text)
+    candidate = match.group(1) if match else "MISSING"
+    if candidate == "MISSING":
+        return False, "tested runtime commit is missing"
+    ancestor_ok, ancestor_detail = _run(
+        ["git", "merge-base", "--is-ancestor", candidate, head], timeout=30
+    )
+    if not ancestor_ok:
+        return False, f"runtime commit is not an ancestor: {ancestor_detail}"
+    diff_ok, diff_detail = _run(["git", "diff", "--name-only", f"{candidate}..{head}"], timeout=30)
+    if not diff_ok:
+        return False, diff_detail
+    changed = {line for line in diff_detail.splitlines() if line}
+    allowed = {
+        "assets/demo-poster.png",
+        "assets/demo.mp4",
+        "docs/DEMO_EVIDENCE.md",
+        "docs/RELEASE_EVIDENCE.md",
+        "release/evidence/manifest.json",
+    }
+    unexpected = sorted(changed - allowed)
+    if unexpected:
+        return False, f"post-runtime changes are not evidence-only: {unexpected}"
+    evidence_text = text + "\n" + (ROOT / "docs/DEMO_EVIDENCE.md").read_text(encoding="utf-8")
+    pending = re.findall(r"(?im)\b(?:not captured|asset absent|capture pending)\b", evidence_text)
+    if pending:
+        return False, f"pending evidence markers={len(pending)}"
+    return True, f"runtime={candidate}; evidence_checkout={head}; evidence_only={sorted(changed)}"
 
 
 def _quality() -> tuple[bool, str]:
