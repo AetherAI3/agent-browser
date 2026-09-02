@@ -345,6 +345,7 @@ class PatchrightBrowserAdapter:
                 self._proxy = PinnedSocks5Proxy(guard.connection_plan)
                 await self._proxy.start()
                 proxy_url = self._proxy.server_url
+                proxy_host = self._proxy.host
                 self._patchright = await async_playwright().start()
                 self._context = await self._patchright.chromium.launch_persistent_context(
                     str(profile_directory),
@@ -372,7 +373,9 @@ class PatchrightBrowserAdapter:
                         "--disable-sync",
                         "--dns-prefetch-disable",
                         "--force-webrtc-ip-handling-policy=disable_non_proxied_udp",
-                        "--host-resolver-rules=MAP * ~NOTFOUND",
+                        # Keep destination DNS disabled without blocking Chrome's
+                        # connection to its already-bound loopback SOCKS proxy.
+                        f"--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE {proxy_host}",
                         "--no-first-run",
                         "--no-default-browser-check",
                         "--proxy-bypass-list=<-loopback>",

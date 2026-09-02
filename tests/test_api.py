@@ -44,9 +44,16 @@ def make_manager(
 
 
 @asynccontextmanager
-async def api_client(application: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
+async def api_client(
+    application: FastAPI,
+    *,
+    raise_app_exceptions: bool = False,
+) -> AsyncIterator[httpx.AsyncClient]:
     async with application.router.lifespan_context(application):
-        transport = httpx.ASGITransport(app=application, raise_app_exceptions=False)
+        transport = httpx.ASGITransport(
+            app=application,
+            raise_app_exceptions=raise_app_exceptions,
+        )
         async with httpx.AsyncClient(
             transport=transport,
             base_url="http://127.0.0.1",
@@ -66,7 +73,7 @@ async def test_all_six_routes_follow_the_closed_v1_contract(tmp_path: Path) -> N
         utc_clock=clock.utc_now,
     )
 
-    async with api_client(app) as client:
+    async with api_client(app, raise_app_exceptions=True) as client:
         health = await client.get("/browser/health")
         assert health.status_code == 200
         assert health.json()["slots_available"] == 1
@@ -140,7 +147,7 @@ async def test_capacity_unknown_budget_and_validation_errors_are_stable(
         navigation_policy=allow_navigation,
     )
 
-    async with api_client(app) as client:
+    async with api_client(app, raise_app_exceptions=True) as client:
         create = await client.post("/browser/session/create", json={"max_vision_steps": 1})
         session_id = create.json()["session_id"]
 
@@ -148,6 +155,8 @@ async def test_capacity_unknown_budget_and_validation_errors_are_stable(
         assert capacity.status_code == 503
         assert capacity.json()["error"]["code"] == "SESSION_CAPACITY_REACHED"
         assert 1 <= int(capacity.headers["retry-after"]) <= 300
+        assert capacity.headers["cache-control"] == "no-store"
+        assert capacity.headers["x-content-type-options"] == "nosniff"
 
         unknown = await client.post(
             "/browser/snapshot",
