@@ -173,9 +173,10 @@ jobs:
           test "$(podman --remote image inspect "aether-browser:${GITHUB_SHA}" \
             --format '{{.Config.User}}')" = "10001:10001"
           image_id="$(podman --remote image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')"
-          test "${#image_id}" -eq 71
-          case "$image_id" in (sha256:*) ;; (*) exit 1 ;; esac
-          case "${image_id#sha256:}" in (*[!0-9a-f]*) exit 1 ;; esac
+          image_hash="${image_id#sha256:}"
+          test "${#image_hash}" -eq 64
+          case "$image_hash" in (*[!0-9a-f]*) exit 1 ;; esac
+          image_id="sha256:${image_hash}"
           printf 'image_id=%s\n' "$image_id" >> "$GITHUB_OUTPUT"
           mkdir -p artifacts
           podman --remote history --no-trunc "aether-browser:${GITHUB_SHA}" \
@@ -346,7 +347,11 @@ jobs:
             fi
             sleep 1
           done
-          test "$ready" = true
+          if [ "$ready" != true ]; then
+            docker compose ps --all
+            docker compose logs --no-color
+            exit 1
+          fi
           python - <<'PY'
           import json
           import urllib.request
