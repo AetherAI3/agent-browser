@@ -114,6 +114,7 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     assert "--fail-on high --only-fixed --output json" in text
     assert "> artifacts/vulnerabilities.json" in text
     assert "> artifacts/browser-package.txt" in text
+    assert "/opt/google/chrome/chrome --version" in text
     for job in ("container", "acceptance", "quickstart", "release-integrity"):
         assert f"  {job}:\n" in text
 

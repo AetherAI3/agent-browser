@@ -54,14 +54,23 @@ capture_dir="${AETHER_ACCEPTANCE_CAPTURE_DIR:-}"
 pod_created=false
 
 cleanup() {
+  status=$?
+  trap - EXIT INT TERM
   set +e
   if [ "$pod_created" = true ]; then
+    if [ "$status" -ne 0 ]; then
+      "${podman_cli[@]}" logs "$fixture" >&2
+      "${podman_cli[@]}" logs "$browser" >&2
+    fi
     "${podman_cli[@]}" pod rm -f "$pod" >/dev/null 2>&1
     pod_created=false
   fi
   rm -rf -- "$work_dir"
+  exit "$status"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 image_hash="${expected_image_id#sha256:}"
 if [ "${#expected_sha}" -ne 40 ] \

@@ -196,7 +196,7 @@ jobs:
           podman --remote run --rm --network none --read-only --cap-drop=all \
             --security-opt=no-new-privileges --pull=never --http-proxy=false \
             --entrypoint sh "$IMAGE_ID" -c \
-            'set -eu; browser="$(command -v google-chrome-stable)"; test -x "$browser"; "$browser" --version; dpkg-query --show google-chrome-stable; dpkg --print-architecture' \
+            'set -eu; test -x /opt/google/chrome/chrome; /opt/google/chrome/chrome --version; dpkg-query --show google-chrome-stable; dpkg --print-architecture' \
             > artifacts/browser-package.txt
           grep -Eq '^Google Chrome [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
             artifacts/browser-package.txt
@@ -344,8 +344,20 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          cleanup() { docker compose down --remove-orphans >/dev/null 2>&1 || true; }
-          trap cleanup EXIT INT TERM
+          cleanup() {
+            status=$?
+            trap - EXIT INT TERM
+            set +e
+            if [ "$status" -ne 0 ]; then
+              docker compose ps --all
+              docker compose logs --no-color
+            fi
+            docker compose down --remove-orphans >/dev/null 2>&1
+            exit "$status"
+          }
+          trap cleanup EXIT
+          trap 'exit 130' INT
+          trap 'exit 143' TERM
           docker compose up --build --detach
           ready=false
           for _ in $(seq 1 180); do
@@ -356,8 +368,6 @@ jobs:
             sleep 1
           done
           if [ "$ready" != true ]; then
-            docker compose ps --all
-            docker compose logs --no-color
             exit 1
           fi
           python - <<'PY'
