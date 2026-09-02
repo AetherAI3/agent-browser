@@ -83,7 +83,13 @@ jobs:
       - name: Checkout proved commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.ref-proof.outputs.sha }}
+          # ref-proof has already asserted that github.sha is the exact refs/heads/main
+          # tip and, for workflow_dispatch, that it equals the supplied expected_sha. Use
+          # github.sha here rather than the job output: it is the identical commit by
+          # construction, but it is a statically trusted ref, so a privileged run can never
+          # execute an unproved tree and poison the default-branch caches. The "Verify exact
+          # checkout" step below still cross-checks HEAD against the proved SHA.
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Install Ubuntu rootless-container prerequisites
         shell: bash
@@ -278,7 +284,13 @@ jobs:
       - name: Checkout proved commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.ref-proof.outputs.sha }}
+          # ref-proof has already asserted that github.sha is the exact refs/heads/main
+          # tip and, for workflow_dispatch, that it equals the supplied expected_sha. Use
+          # github.sha here rather than the job output: it is the identical commit by
+          # construction, but it is a statically trusted ref, so a privileged run can never
+          # execute an unproved tree and poison the default-branch caches. The "Verify exact
+          # checkout" step below still cross-checks HEAD against the proved SHA.
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Verify exact checkout
         shell: bash
@@ -335,7 +347,13 @@ jobs:
       - name: Checkout proved commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.ref-proof.outputs.sha }}
+          # ref-proof has already asserted that github.sha is the exact refs/heads/main
+          # tip and, for workflow_dispatch, that it equals the supplied expected_sha. Use
+          # github.sha here rather than the job output: it is the identical commit by
+          # construction, but it is a statically trusted ref, so a privileged run can never
+          # execute an unproved tree and poison the default-branch caches. The "Verify exact
+          # checkout" step below still cross-checks HEAD against the proved SHA.
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Verify exact checkout
         shell: bash
@@ -429,7 +447,13 @@ jobs:
       - name: Checkout proved commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ needs.ref-proof.outputs.sha }}
+          # ref-proof has already asserted that github.sha is the exact refs/heads/main
+          # tip and, for workflow_dispatch, that it equals the supplied expected_sha. Use
+          # github.sha here rather than the job output: it is the identical commit by
+          # construction, but it is a statically trusted ref, so a privileged run can never
+          # execute an unproved tree and poison the default-branch caches. The "Verify exact
+          # checkout" step below still cross-checks HEAD against the proved SHA.
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - name: Verify exact checkout
