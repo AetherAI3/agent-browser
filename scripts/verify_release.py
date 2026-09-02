@@ -395,6 +395,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         "${AETHER_BROWSER_NOVNC_BIND:-127.0.0.1}",
         '[ "$novnc_bind" != "127.0.0.1" ]',
         "x11vnc -display :99 -listen 127.0.0.1 -no6 -noipv6",
+        "-rfbport 5900 -rfbportv6 -1 -httpportv6 -1",
         'websockify --web=/usr/share/novnc "$novnc_bind:$novnc_port"',
         "python -m aether_browser.main &",
     )
