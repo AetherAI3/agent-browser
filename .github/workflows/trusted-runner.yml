@@ -1,4 +1,4 @@
-name: trusted-runner
+name: release-evidence
 
 on:
   push:
@@ -14,16 +14,21 @@ permissions:
   contents: read
 
 concurrency:
-  group: trusted-runner-main
+  group: release-evidence-main
   cancel-in-progress: true
 
 env:
   PYTHONUNBUFFERED: "1"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  SYFT_VERSION: "1.51.1"
+  SYFT_SHA256: "8fcb33017a0dc1058298c923c436d19dfa68ae93968e0b423248542e3afb9fc3"
+  GRYPE_VERSION: "0.118.0"
+  GRYPE_SHA256: "1d444c5e7360471815f7158f71935fcecc68a3c417d85c7344f770854300bba2"
+  SYFT_CHECK_FOR_APP_UPDATE: "false"
+  GRYPE_CHECK_FOR_APP_UPDATE: "false"
 
-# No pull_request trigger is permitted here. A GitHub-hosted job first proves
-# that the event and checkout name the exact current main commit. Only that SHA
-# is handed to the persistent, repository-scoped runner.
+# VPS6 qualification supplies host/capacity/isolation evidence. Release code
+# executes here on fresh hosted VMs so the hardened VPS6 worker is not weakened.
 jobs:
   ref-proof:
     runs-on: ubuntu-24.04
@@ -70,8 +75,8 @@ jobs:
 
   container:
     needs: ref-proof
-    runs-on: [self-hosted, linux, x64, aetherbrowser-ci]
-    timeout-minutes: 30
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
     outputs:
       image_id: ${{ steps.image_proof.outputs.image_id }}
     steps:
@@ -80,53 +85,320 @@ jobs:
         with:
           ref: ${{ needs.ref-proof.outputs.sha }}
           persist-credentials: false
-      - name: Verify exact checkout and remote rootless engine
+      - name: Install Ubuntu rootless-container prerequisites
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          sudo apt-get -o Acquire::Retries=3 update
+          sudo apt-get install --yes --no-install-recommends \
+            podman uidmap slirp4netns fuse-overlayfs ffmpeg
+          test -n "$(awk -F: -v user="$(id -un)" '$1 == user {print $0}' /etc/subuid)"
+          test -n "$(awk -F: -v user="$(id -un)" '$1 == user {print $0}' /etc/subgid)"
+      - name: Install checksum-pinned Syft and Grype
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          tool_dir="$RUNNER_TEMP/aether-tools"
+          install -d -m 0700 "$tool_dir"
+          install_tool() {
+            name="$1"
+            version="$2"
+            expected_sha="$3"
+            archive="$RUNNER_TEMP/${name}_${version}_linux_amd64.tar.gz"
+            curl --proto '=https' --tlsv1.2 --fail --show-error --silent \
+              --location --retry 3 --retry-all-errors \
+              "https://github.com/anchore/${name}/releases/download/v${version}/${name}_${version}_linux_amd64.tar.gz" \
+              --output "$archive"
+            printf '%s  %s\n' "$expected_sha" "$archive" | sha256sum --check --strict
+            tar -xzf "$archive" -C "$tool_dir" "$name"
+            chmod 0755 "$tool_dir/$name"
+          }
+          install_tool syft "$SYFT_VERSION" "$SYFT_SHA256"
+          install_tool grype "$GRYPE_VERSION" "$GRYPE_SHA256"
+          "$tool_dir/syft" version | grep -Eq 'Version:[[:space:]]+1\.51\.1'
+          "$tool_dir/grype" version | grep -Eq 'Version:[[:space:]]+0\.118\.0'
+          printf '%s\n' "$tool_dir" >> "$GITHUB_PATH"
+      - name: Start private ephemeral rootless Podman API
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          umask 077
+          runtime_dir="$RUNNER_TEMP/aether-podman-runtime"
+          socket_dir="$RUNNER_TEMP/aether-podman-api"
+          podman_socket="$socket_dir/podman.sock"
+          install -d -m 0700 "$runtime_dir" "$socket_dir"
+          export XDG_RUNTIME_DIR="$runtime_dir"
+          nohup podman system service --time=0 "unix://$podman_socket" \
+            >"$RUNNER_TEMP/podman-service.log" 2>&1 &
+          printf '%s\n' "$!" > "$RUNNER_TEMP/podman-service.pid"
+          for _ in $(seq 1 100); do
+            test -S "$podman_socket" && break
+            sleep 0.1
+          done
+          test -S "$podman_socket"
+          chmod 0600 "$podman_socket"
+          test "$(stat -Lc '%u:%g:%a' "$podman_socket")" = "$(id -u):$(id -g):600"
+          test "$(CONTAINER_HOST="unix://$podman_socket" podman --remote info \
+            --format '{{.Host.Security.Rootless}}')" = "true"
+          {
+            printf 'XDG_RUNTIME_DIR=%s\n' "$runtime_dir"
+            printf 'CONTAINER_HOST=unix://%s\n' "$podman_socket"
+            printf 'AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET=%s\n' "$podman_socket"
+          } >> "$GITHUB_ENV"
+      - name: Verify exact checkout and private rootless engine
         shell: bash
         env:
           TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
         run: |
           set -Eeuo pipefail
           test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
-          test "${CONTAINER_HOST:-}" = "unix:///run/aether-ci-browser-podman.sock"
-          test -S /run/aether-ci-browser-podman.sock
-          test "$(podman info --format '{{.Host.Security.Rootless}}')" = "true"
-          podman ps --all --format '{{.ID}}' >/dev/null
-      - name: Rootless build
+          socket_path="${CONTAINER_HOST#unix://}"
+          case "$socket_path" in ("$RUNNER_TEMP"/*) ;; (*) exit 1 ;; esac
+          test -S "$socket_path"
+          test "$(stat -Lc '%u:%g:%a' "$socket_path")" = "$(id -u):$(id -g):600"
+          test "$(podman --remote info --format '{{.Host.Security.Rootless}}')" = "true"
+          podman --remote ps --all --format '{{.ID}}' >/dev/null
+      - name: Rootless exact-commit build
+        shell: bash
         run: |
-          podman pull docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
-          podman build --pull=never --tag aether-browser:${GITHUB_SHA} .
+          set -Eeuo pipefail
+          podman --remote pull \
+            docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
+          podman --remote build --pull=never --tag "aether-browser:${GITHUB_SHA}" .
       - name: Inspect non-root image and layers
         id: image_proof
+        shell: bash
         run: |
-          test "$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Config.User}}')" = "10001:10001"
-          image_id="$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')"
+          set -Eeuo pipefail
+          test "$(podman --remote image inspect "aether-browser:${GITHUB_SHA}" \
+            --format '{{.Config.User}}')" = "10001:10001"
+          image_id="$(podman --remote image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')"
           test "${#image_id}" -eq 71
           case "$image_id" in (sha256:*) ;; (*) exit 1 ;; esac
           case "${image_id#sha256:}" in (*[!0-9a-f]*) exit 1 ;; esac
           printf 'image_id=%s\n' "$image_id" >> "$GITHUB_OUTPUT"
-          podman history --no-trunc aether-browser:${GITHUB_SHA} > image-history.txt
-          ! grep -E '(github_pat_|ghp_|BEGIN (RSA |OPENSSH )?PRIVATE KEY)' image-history.txt
-      - name: Generate SBOM
-        run: |
           mkdir -p artifacts
-          syft aether-browser:${GITHUB_SHA} --output spdx-json=artifacts/sbom.spdx.json
-      - name: Scan image vulnerabilities
-        run: >-
-          grype sbom:artifacts/sbom.spdx.json --fail-on high --only-fixed
-          --output json > artifacts/vulnerabilities.json
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+          podman --remote history --no-trunc "aether-browser:${GITHUB_SHA}" \
+            > artifacts/image-history.txt
+          ! grep -E '(github_pat_|ghp_|BEGIN (RSA |OPENSSH )?PRIVATE KEY)' \
+            artifacts/image-history.txt
+      - name: Generate exact-image inventories
+        shell: bash
+        env:
+          IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}
+        run: |
+          set -Eeuo pipefail
+          podman --remote save --format oci-archive \
+            --output "$RUNNER_TEMP/aether-browser.oci.tar" "$IMAGE_ID"
+          syft "oci-archive:$RUNNER_TEMP/aether-browser.oci.tar" \
+            --output spdx-json=artifacts/sbom.spdx.json
+          grype "sbom:artifacts/sbom.spdx.json" --fail-on high --only-fixed \
+            --output json > artifacts/vulnerabilities.json
+          podman --remote run --rm --pull=never --http-proxy=false \
+            --entrypoint python "$IMAGE_ID" -I - <<'PY' \
+            > artifacts/python-distributions.json
+          import importlib.metadata
+          import json
+
+          records = []
+          for distribution in importlib.metadata.distributions():
+              metadata = distribution.metadata
+              records.append(
+                  {
+                      "license": metadata.get("License", "UNKNOWN"),
+                      "name": metadata.get("Name", distribution.name),
+                      "version": distribution.version,
+                  }
+              )
+          print(json.dumps(sorted(records, key=lambda item: item["name"].lower()), indent=2))
+          PY
+          podman --remote run --rm --pull=never --http-proxy=false \
+            --entrypoint sh "$IMAGE_ID" -c \
+            "find /usr/share/doc /opt/patchright-browsers -type f \
+              \( -iname copyright -o -iname 'license*' -o -iname 'notice*' \) -print0 \
+              | sort -z | tar --null --files-from=- -czf -" \
+            > artifacts/installed-notices.tar.gz
+      - name: Run isolated exact-image acceptance and capture real frames
+        shell: bash
+        env:
+          AETHER_ACCEPTANCE_CAPTURE_DIR: artifacts/demo-frames
+          AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}
+        run: bash scripts/acceptance.sh
+      - name: Assemble runtime-derived demo media
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p artifacts/generated-assets
+          cp artifacts/demo-frames/display-after.png \
+            artifacts/generated-assets/demo-poster.png
+          ffmpeg -hide_banner -loglevel error -y \
+            -loop 1 -t 2 -i assets/social-preview.png \
+            -loop 1 -t 3 -i artifacts/demo-frames/api-before.png \
+            -loop 1 -t 3 -i artifacts/demo-frames/display-after.png \
+            -filter_complex \
+            "[0:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=0x0d2444,setsar=1[v0];[1:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[v1];[2:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1[v2];[v0][v1][v2]concat=n=3:v=1:a=0,format=yuv420p[v]" \
+            -map "[v]" -r 30 -c:v libx264 -preset medium -crf 20 \
+            -movflags +faststart -metadata creation_time= \
+            artifacts/generated-assets/demo.mp4
+          sha256sum artifacts/generated-assets/demo.mp4 \
+            artifacts/generated-assets/demo-poster.png \
+            > artifacts/generated-assets/SHA256SUMS
+      - name: Upload container, acceptance, and demo evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: container-evidence-${{ github.sha }}
-          path: |
-            artifacts/sbom.spdx.json
-            artifacts/vulnerabilities.json
-            image-history.txt
+          name: container-evidence-${{ needs.ref-proof.outputs.sha }}
+          path: artifacts/
           if-no-files-found: error
           retention-days: 14
+      - name: Stop private Podman service
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          pid="$(cat "$RUNNER_TEMP/podman-service.pid" 2>/dev/null)"
+          case "$pid" in (''|*[!0-9]*) ;; (*) kill "$pid" 2>/dev/null ;; esac
 
   acceptance:
     needs: [ref-proof, container]
-    runs-on: [self-hosted, linux, x64, aetherbrowser-ci]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout proved commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ref-proof.outputs.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout
+        shell: bash
+        env:
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+      - name: Download container evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: container-evidence-${{ needs.ref-proof.outputs.sha }}
+          path: ${{ runner.temp }}/container-evidence
+      - name: Verify commit-bound acceptance evidence
+        shell: bash
+        env:
+          EVIDENCE_PATH: ${{ runner.temp }}/container-evidence/acceptance.json
+          EXPECTED_IMAGE_ID: ${{ needs.container.outputs.image_id }}
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          evidence = json.loads(Path(os.environ["EVIDENCE_PATH"]).read_text())
+          required = {
+              "direct-ssrf-refusal",
+              "exact-image-id-handoff",
+              "isolated-pod-network-none",
+              "loopback-listener-proof",
+              "pod-cleanup",
+              "process-cleanup",
+              "profile-cleanup",
+              "redirect-refusal",
+              "resource-bounded-pod",
+              "runtime-image-id-proof",
+              "same-display-color-proof",
+              "same-pod-namespace",
+          }
+          assert evidence["schema_version"] == 1
+          assert evidence["result"] == "PASS"
+          assert evidence["tested_commit"] == os.environ["TRUSTED_SHA"]
+          assert evidence["image_id"] == os.environ["EXPECTED_IMAGE_ID"]
+          assert required <= set(evidence["checks"])
+          assert re.fullmatch(r"[0-9a-f]{64}", evidence["visual_nonce_sha256"])
+          assert re.fullmatch(r"#[0-9a-f]{6}", evidence["proof_color"])
+          PY
+
+  quickstart:
+    needs: ref-proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout proved commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.ref-proof.outputs.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout
+        shell: bash
+        env:
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+      - name: Reproduce documented Linux Compose quickstart
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cleanup() { docker compose down --remove-orphans >/dev/null 2>&1 || true; }
+          trap cleanup EXIT INT TERM
+          docker compose up --build --detach
+          ready=false
+          for _ in $(seq 1 180); do
+            if curl --fail --silent http://127.0.0.1:8092/browser/health >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$ready" = true
+          python - <<'PY'
+          import json
+          import urllib.request
+
+
+          def call(path, body):
+              request = urllib.request.Request(
+                  "http://127.0.0.1:8092" + path,
+                  data=json.dumps(body).encode(),
+                  headers={"Content-Type": "application/json"},
+                  method="POST",
+              )
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+
+
+          created = call("/browser/session/create", {"api_version": "v1"})
+          ended = call(
+              "/browser/session/end",
+              {"api_version": "v1", "session_id": created["session_id"]},
+          )
+          assert ended["status"] == "ended"
+          PY
+          mkdir -p artifacts
+          python - <<'PY' > artifacts/quickstart.json
+          import json
+          import os
+
+          print(
+              json.dumps(
+                  {
+                      "command": "docker compose up --build --detach",
+                      "result": "PASS",
+                      "schema_version": 1,
+                      "tested_commit": os.environ["GITHUB_SHA"],
+                  },
+                  sort_keys=True,
+              )
+          )
+          PY
+      - name: Upload quickstart evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: quickstart-evidence-${{ needs.ref-proof.outputs.sha }}
+          path: artifacts/quickstart.json
+          if-no-files-found: error
+          retention-days: 14
+
+  release-integrity:
+    needs: [ref-proof, acceptance, container, quickstart]
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout proved commit
@@ -139,32 +411,16 @@ jobs:
         env:
           TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
         run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
-      - name: Run isolated acceptance
-        env:
-          AETHER_ACCEPTANCE_IMAGE_ID: ${{ needs.container.outputs.image_id }}
-        run: bash scripts/acceptance.sh
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - name: Download container evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: acceptance-evidence-${{ github.sha }}
-          path: artifacts/acceptance.json
-          if-no-files-found: error
-          retention-days: 14
-
-  release-integrity:
-    needs: [ref-proof, acceptance]
-    runs-on: [self-hosted, linux, x64, aetherbrowser-ci]
-    timeout-minutes: 15
-    steps:
-      - name: Checkout proved commit
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+          name: container-evidence-${{ needs.ref-proof.outputs.sha }}
+          path: downloaded-evidence/container
+      - name: Download quickstart evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          ref: ${{ needs.ref-proof.outputs.sha }}
-          persist-credentials: false
-      - name: Verify exact checkout
-        shell: bash
-        env:
-          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
-        run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+          name: quickstart-evidence-${{ needs.ref-proof.outputs.sha }}
+          path: downloaded-evidence/quickstart
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
@@ -172,4 +428,74 @@ jobs:
         run: >-
           python -m pip install --require-hashes -r requirements.lock &&
           python -m pip install --no-build-isolation --no-deps -e .
-      - run: python scripts/verify_release.py --strict --skip-external
+      - name: Run strict repository gate
+        id: strict
+        continue-on-error: true
+        env:
+          AETHER_RELEASE_EVIDENCE_COMMIT: ${{ needs.ref-proof.outputs.sha }}
+        run: python scripts/verify_release.py --strict --skip-external
+      - name: Write sanitized workflow-attested evidence manifest
+        if: always()
+        shell: bash
+        env:
+          IMAGE_ID: ${{ needs.container.outputs.image_id }}
+          STRICT_OUTCOME: ${{ steps.strict.outcome }}
+          TESTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p release/evidence
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+          root = Path("downloaded-evidence")
+          files = {
+              path.relative_to(root).as_posix(): digest(path)
+              for path in sorted(root.rglob("*"))
+              if path.is_file()
+          }
+          record = {
+              "artifact_sha256": files,
+              "host_attestation": {
+                  "role": "VPS6 host and worker-isolation qualification only",
+                  "run_url": "https://github.com/AetherAI3/ATSv2/actions/runs/33504063351",
+                  "toolchain_result": "not used; workload execution is ephemeral hosted",
+              },
+              "image_id": os.environ["IMAGE_ID"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "run_url": (
+                  f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}"
+                  f"/actions/runs/{os.environ['GITHUB_RUN_ID']}"
+              ),
+              "schema_version": 1,
+              "strict_gate": os.environ["STRICT_OUTCOME"],
+              "tested_commit": os.environ["TESTED_SHA"],
+          }
+          Path("release/evidence/release-evidence.json").write_text(
+              json.dumps(record, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Upload final release evidence bundle
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-evidence-${{ needs.ref-proof.outputs.sha }}
+          path: |
+            downloaded-evidence/
+            release/evidence/release-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Enforce strict release result
+        if: always()
+        shell: bash
+        env:
+          STRICT_OUTCOME: ${{ steps.strict.outcome }}
+        run: test "$STRICT_OUTCOME" = success

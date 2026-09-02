@@ -6,7 +6,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = ROOT / ".github" / "workflows"
 GITHUB_HOSTED_RUNNER = "ubuntu-24.04"
-PRODUCTION_RUNNER = "[self-hosted, linux, x64, aetherbrowser-ci]"
 STAGING_RUNNER = "[self-hosted, linux, x64, aetherbrowser-staging]"
 
 
@@ -87,27 +86,31 @@ def test_bounded_ci_is_github_hosted_for_every_job() -> None:
     assert "aetherbrowser-staging" not in text
 
 
-def test_production_runner_accepts_only_exact_current_main() -> None:
+def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() -> None:
     text = _read(WORKFLOW_DIR / "trusted-runner.yml")
 
     assert _trigger_names(text) == {"push", "workflow_dispatch"}
     assert "    branches: [main]" in text
-    assert text.count(f"runs-on: {PRODUCTION_RUNNER}") == 3
+    assert set(_runs_on_values(text)) == {GITHUB_HOSTED_RUNNER}
+    assert text.count(f"runs-on: {GITHUB_HOSTED_RUNNER}") == 5
+    assert "self-hosted" not in text
+    assert "aetherbrowser-ci" not in text
     assert "aetherbrowser-staging" not in text
     assert "      expected_sha:\n" in text
     assert 'test "$EVENT_REF" = "refs/heads/main"' in text
     assert 'test "$EXPECTED_SHA" = "$EVENT_SHA"' in text
     assert 'test "$checkout_sha" = "$EVENT_SHA"' in text
-    assert text.count("ref: ${{ needs.ref-proof.outputs.sha }}") == 3
-    assert text.count("git rev-parse --verify HEAD^{commit}") == 4
+    assert text.count("ref: ${{ needs.ref-proof.outputs.sha }}") == 4
+    assert text.count("git rev-parse --verify HEAD^{commit}") == 5
     assert "id: image_proof" in text
     assert "image_id: ${{ steps.image_proof.outputs.image_id }}" in text
     assert (
-        "image_id=\"$(podman image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')\""
+        "image_id=\"$(podman --remote image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')\""
         in text
     )
-    assert "AETHER_ACCEPTANCE_IMAGE_ID: ${{ needs.container.outputs.image_id }}" in text
-    for job in ("container", "acceptance", "release-integrity"):
+    assert "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}" in text
+    assert text.count("bash scripts/acceptance.sh") == 1
+    for job in ("container", "acceptance", "quickstart", "release-integrity"):
         assert f"  {job}:\n" in text
 
 
@@ -195,7 +198,12 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     text = _read(ROOT / "scripts" / "acceptance.sh")
 
     assert text.count("podman_cli=(podman --remote)") == 1
-    assert 'expected_container_host="unix:///run/aether-ci-browser-podman.sock"' in text
+    assert 'default_podman_socket="/run/aether-ci-browser-podman.sock"' in text
+    assert "AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET" in text
+    assert '"${GITHUB_ACTIONS:-}" != "true"' in text
+    assert '"$RUNNER_TEMP"/*' in text
+    assert "stat -Lc '%u:%g:%a'" in text
+    assert '"$(id -u):$(id -g):600"' in text
     assert 'expected_sha="${GITHUB_SHA:-}"' in text
     assert 'expected_image_id="${AETHER_ACCEPTANCE_IMAGE_ID:-}"' in text
     assert "image inspect \"$image_tag\" --format '{{.Id}}'" in text
