@@ -14,9 +14,9 @@ asset and is not runtime proof.
 |---|---|
 | Exact 40-character commit | `055f68787833c7e00e13ccbe0c0ecb69a8da3659` |
 | Immutable container image ID | `sha256:a9253e91fcda87e56dd0c695f68a2da3e9defad7a3e347faa71c060c78a4b101` |
-| Build command and run URL | Rootless `podman build` against a private per-job Podman API, `release-evidence` workflow, [container job](https://github.com/AetherAI3/aetherbrowser/actions/runs/33612893919/job/100192012520) |
-| Acceptance command and run URL | Isolated exact-image acceptance in a `--network none` pod, same run, [acceptance job](https://github.com/AetherAI3/aetherbrowser/actions/runs/33612893919/job/100193455090) |
-| Aether Browser version | `0.1.0` (agreed across project, package, Compose, and image label at this commit) |
+| Build command and run URL | Rootless `podman build` against a private per-job Podman API, `release-evidence` workflow, [container job](https://github.com/AetherAI3/agent-browser/actions/runs/33612893919/job/100192012520) |
+| Acceptance command and run URL | Isolated exact-image acceptance in a `--network none` pod, same run, [acceptance job](https://github.com/AetherAI3/agent-browser/actions/runs/33612893919/job/100193455090) |
+| Agent Browser version | `0.1.0` (agreed across project, package, Compose, and image label at this commit) |
 | Google Chrome Stable executable, package version, architecture, and source | `/opt/google/chrome/chrome`, `Google Chrome 152.0.7977.75`, package `google-chrome-stable 152.0.7977.75-1`, `amd64`, installed in-image via `patchright install --with-deps chrome` |
 | Capture date in UTC | 2026-09-02, 09:17:44Z to 09:18:06Z |
 | Capture operator | Automated `release-evidence` workflow on a GitHub-hosted `ubuntu-24.04` runner; no interactive operator step |
@@ -74,11 +74,14 @@ click returns.
 
 ## Social-preview provenance
 
-The preview was created from the owner-supplied Aether Browser logo, whose committed
-`assets/aether-browser-logo.jpg` SHA-256 is
-`af73b9d1694810fc431cb9fb3fb33a0eb9e21c0ccd36700e10b822291e2feedc`. The generated 2:1 artwork
-was mechanically resized to the required 1280x640 PNG. Its visible API panel uses only the
-implemented v0.1 routes, and its footer states: “Self-hosted Chrome · API control · Live human
+The preview was derived from the owner-supplied Agent Browser artwork. That artwork was
+originally committed as a JPEG carrying a painted-on transparency checkerboard and a dashed
+border, neither of which was real transparency. The committed logo is now
+`assets/agent-browser-logo.png`, SHA-256
+`fd715919bb45791c432d19e1fc82cf6d8c6cb9fdc89051b19202f3dc8f04f7dc`: an 848x904 PNG with a real
+alpha channel, the painted border removed, and the palette flattened to 64 colours to clear JPEG
+ringing. The generated 2:1 preview artwork was mechanically resized to the required 1280x640
+PNG. Its visible API panel uses only the implemented v0.1 routes, and its footer states: “Self-hosted Chrome · API control · Live human
 takeover.” `docs/assets/` contains byte-identical publication copies of the logo and preview so a
 `/docs` Pages build cannot escape its source root. The artwork depicts the product contract but is
 not itself a record of a live run.

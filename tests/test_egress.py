@@ -8,8 +8,8 @@ from collections.abc import Awaitable, Callable
 
 import pytest
 
-from aether_browser.egress import PinnedSocks5Proxy
-from aether_browser.policy import ConnectionPlan, NavigationPolicy
+from agent_browser.egress import PinnedSocks5Proxy
+from agent_browser.policy import ConnectionPlan, NavigationPolicy
 
 PUBLIC_ADDRESS = ipaddress.IPv4Address("93.184.216.34")
 

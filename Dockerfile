@@ -1,9 +1,9 @@
 FROM python:3.11-slim-bookworm@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
 
-LABEL org.opencontainers.image.title="Aether Browser" \
+LABEL org.opencontainers.image.title="Agent Browser" \
       org.opencontainers.image.version="0.1.0" \
-      org.opencontainers.image.source="https://github.com/AetherAI3/aetherbrowser" \
-      org.opencontainers.image.documentation="https://github.com/AetherAI3/aetherbrowser/blob/main/THIRD_PARTY_NOTICES.md"
+      org.opencontainers.image.source="https://github.com/AetherAI3/agent-browser" \
+      org.opencontainers.image.documentation="https://github.com/AetherAI3/agent-browser/blob/main/THIRD_PARTY_NOTICES.md"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -37,8 +37,8 @@ RUN python -m pip install --require-hashes -r requirements.lock \
     && command -v google-chrome-stable \
     && google-chrome-stable --version \
     && dpkg-query --show google-chrome-stable \
-    && groupadd --gid 10001 aether \
-    && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin aether \
+    && groupadd --gid 10001 agent \
+    && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin agent \
     && chown -R root:root /app /opt/patchright-browsers \
     && chmod -R a-w /app /opt/patchright-browsers \
     && chmod 0755 /app/scripts/container-entrypoint.sh

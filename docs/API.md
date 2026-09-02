@@ -1,4 +1,4 @@
-# Aether Browser API v1 contract
+# Agent Browser API v1 contract
 
 The v0.1 runtime exposes one closed JSON API. Route names are intentionally stable and unprefixed; every request and response carries `api_version: "v1"`. Unknown fields are rejected.
 
@@ -14,22 +14,22 @@ Direct non-loopback API listening is not supported in v0.1, even with bearer tok
 clients are supported only through an explicitly configured same-host TLS reverse proxy. The
 backend remains HTTP on a numeric loopback socket and requires the complete tuple below:
 
-- `AETHER_BROWSER_REMOTE_MODE=1`;
-- `AETHER_BROWSER_REVERSE_PROXY_EXPOSED=1`;
-- a numeric-loopback `AETHER_BROWSER_API_BIND` (normally `127.0.0.1`);
-- a non-loopback `AETHER_BROWSER_API_HOST` matching the external Host authority;
-- an exact loopback `AETHER_BROWSER_TRUSTED_PROXY_CIDR` (`/32` or `/128`);
-- `AETHER_BROWSER_TRUSTED_PROXY_SCHEME=https`; and
+- `AGENT_BROWSER_REMOTE_MODE=1`;
+- `AGENT_BROWSER_REVERSE_PROXY_EXPOSED=1`;
+- a numeric-loopback `AGENT_BROWSER_API_BIND` (normally `127.0.0.1`);
+- a non-loopback `AGENT_BROWSER_API_HOST` matching the external Host authority;
+- an exact loopback `AGENT_BROWSER_TRUSTED_PROXY_CIDR` (`/32` or `/128`);
+- `AGENT_BROWSER_TRUSTED_PROXY_SCHEME=https`; and
 - distinct strong observer and controller tokens;
-- `AETHER_BROWSER_TEST_MODE=0`; and
-- no `AETHER_BROWSER_TEST_ORIGINS`.
+- `AGENT_BROWSER_TEST_MODE=0`; and
+- no `AGENT_BROWSER_TEST_ORIGINS`.
 
 Partial proxy configuration fails startup. Uvicorn proxy-header interpretation is disabled.
 `Forwarded`, every `X-Forwarded-*` header, `X-Real-IP`, and `X-Original-Host` are rejected rather
 than trusted. The raw TCP peer must match the configured exact loopback CIDR, and the request
 must carry exactly one Host matching the effective API host. The TLS proxy must strip those
 forwarding headers and must never route the noVNC surface. Start the API through the supported
-`python -m aether_browser.main` launcher; a raw Uvicorn CLI can override validated listener
+`python -m agent_browser.main` launcher; a raw Uvicorn CLI can override validated listener
 settings and is outside the transport contract.
 
 The v0.1 local Compose profile serves noVNC without application authentication, so it enforces the exact numeric listener `127.0.0.1` and uses Linux host networking rather than a wildcard container listener plus port publishing. Its implementation-only raw VNC socket is also unauthenticated and fixed to `127.0.0.1:5900`. Treat every process and user able to access the host loopback interface as trusted with the live browser view. Do not expose either view port through a tunnel, reverse proxy, or container bridge.

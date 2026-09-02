@@ -98,7 +98,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          tool_dir="$RUNNER_TEMP/aether-tools"
+          tool_dir="$RUNNER_TEMP/agent-tools"
           install -d -m 0700 "$tool_dir"
           install_tool() {
             name="$1"
@@ -123,8 +123,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           umask 077
-          runtime_dir="$RUNNER_TEMP/aether-podman-runtime"
-          socket_dir="$RUNNER_TEMP/aether-podman-api"
+          runtime_dir="$RUNNER_TEMP/agent-podman-runtime"
+          socket_dir="$RUNNER_TEMP/agent-podman-api"
           podman_socket="$socket_dir/podman.sock"
           install -d -m 0700 "$runtime_dir" "$socket_dir"
           export XDG_RUNTIME_DIR="$runtime_dir"
@@ -164,22 +164,22 @@ jobs:
           set -Eeuo pipefail
           podman --remote pull \
             docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
-          podman --remote build --pull=never --tag "aether-browser:${GITHUB_SHA}" .
+          podman --remote build --pull=never --tag "agent-browser:${GITHUB_SHA}" .
       - name: Inspect non-root image and layers
         id: image_proof
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(podman --remote image inspect "aether-browser:${GITHUB_SHA}" \
+          test "$(podman --remote image inspect "agent-browser:${GITHUB_SHA}" \
             --format '{{.Config.User}}')" = "10001:10001"
-          image_id="$(podman --remote image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')"
+          image_id="$(podman --remote image inspect agent-browser:${GITHUB_SHA} --format '{{.Id}}')"
           image_hash="${image_id#sha256:}"
           test "${#image_hash}" -eq 64
           case "$image_hash" in (*[!0-9a-f]*) exit 1 ;; esac
           image_id="sha256:${image_hash}"
           printf 'image_id=%s\n' "$image_id" >> "$GITHUB_OUTPUT"
           mkdir -p artifacts
-          podman --remote history --no-trunc "aether-browser:${GITHUB_SHA}" \
+          podman --remote history --no-trunc "agent-browser:${GITHUB_SHA}" \
             > artifacts/image-history.txt
           ! grep -E '(github_pat_|ghp_|BEGIN (RSA |OPENSSH )?PRIVATE KEY)' \
             artifacts/image-history.txt
@@ -190,8 +190,8 @@ jobs:
         run: |
           set -Eeuo pipefail
           podman --remote save --format oci-archive \
-            --output "$RUNNER_TEMP/aether-browser.oci.tar" "$IMAGE_ID"
-          syft "oci-archive:$RUNNER_TEMP/aether-browser.oci.tar" \
+            --output "$RUNNER_TEMP/agent-browser.oci.tar" "$IMAGE_ID"
+          syft "oci-archive:$RUNNER_TEMP/agent-browser.oci.tar" \
             --output spdx-json=artifacts/sbom.spdx.json
           podman --remote run --rm --network none --read-only --cap-drop=all \
             --security-opt=no-new-privileges --pull=never --http-proxy=false \

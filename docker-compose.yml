@@ -1,27 +1,27 @@
 services:
-  aether-browser:
+  agent-browser:
     build:
       context: .
       dockerfile: Dockerfile
-    image: aether-browser:0.1.0
+    image: agent-browser:0.1.0
     # Host networking makes the numeric loopback binds below refer to the host
     # loopback interface. Do not replace this with bridge port publishing:
     # websockify would then need a container-interface listener reachable by peers.
     network_mode: host
     environment:
-      AETHER_BROWSER_API_BIND: "127.0.0.1"
-      AETHER_BROWSER_API_HOST: "127.0.0.1"
-      AETHER_BROWSER_API_PORT: "8092"
-      AETHER_BROWSER_CONTAINER_MODE: "1"
-      AETHER_BROWSER_NOVNC_BIND: "127.0.0.1"
-      AETHER_BROWSER_NOVNC_HOST: "127.0.0.1"
-      AETHER_BROWSER_NOVNC_PORT: "6080"
-      AETHER_BROWSER_REMOTE_MODE: "0"
+      AGENT_BROWSER_API_BIND: "127.0.0.1"
+      AGENT_BROWSER_API_HOST: "127.0.0.1"
+      AGENT_BROWSER_API_PORT: "8092"
+      AGENT_BROWSER_CONTAINER_MODE: "1"
+      AGENT_BROWSER_NOVNC_BIND: "127.0.0.1"
+      AGENT_BROWSER_NOVNC_HOST: "127.0.0.1"
+      AGENT_BROWSER_NOVNC_PORT: "6080"
+      AGENT_BROWSER_REMOTE_MODE: "0"
       DISPLAY: ":99"
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=1g
-      - /home/aether/.cache:rw,noexec,nosuid,nodev,size=256m
+      - /home/agent/.cache:rw,noexec,nosuid,nodev,size=256m
     cap_drop:
       - ALL
     security_opt:

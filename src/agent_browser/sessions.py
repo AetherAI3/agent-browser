@@ -1,4 +1,4 @@
-"""Atomic single-session ownership for Aether Browser."""
+"""Atomic single-session ownership for Agent Browser."""
 
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ from pathlib import Path
 from typing import Literal, TypeVar
 from uuid import UUID, uuid4
 
-from aether_browser.models import InteractionAction, InteractRequest, SessionState
-from aether_browser.runtime import (
+from agent_browser.models import InteractionAction, InteractRequest, SessionState
+from agent_browser.runtime import (
     BrowserAdapter,
     BrowserLaunchError,
     BrowserNotReadyError,
@@ -237,7 +237,7 @@ class SessionManager:
             now = self._aware_now()
             monotonic_now = self._monotonic_clock()
             profile_directory = Path(
-                tempfile.mkdtemp(prefix="aether-browser-", dir=self._profile_root)
+                tempfile.mkdtemp(prefix="agent-browser-", dir=self._profile_root)
             )
             record = _SessionRecord(
                 session_id=session_id,
@@ -277,7 +277,7 @@ class SessionManager:
             self._last_state = SessionState.ACTIVE
             record.expiry_task = asyncio.create_task(
                 self._expiry_watch(session_id),
-                name="aether-browser-session-expiry",
+                name="agent-browser-session-expiry",
             )
             return self._session_info(record)
 
@@ -564,7 +564,7 @@ class SessionManager:
 
         profile_task = asyncio.create_task(
             self._remove_profile(record.profile_directory),
-            name="aether-browser-profile-cleanup",
+            name="agent-browser-profile-cleanup",
         )
         cancelled = await _drain_owned_task(profile_task, cancelled)
         try:

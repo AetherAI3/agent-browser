@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic, structured release gate for Aether Browser."""
+"""Deterministic, structured release gate for Agent Browser."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ RELEASE_FILES = (
     "examples/demo.py",
 )
 SOURCE_MODULES = tuple(
-    f"src/aether_browser/{name}.py"
+    f"src/agent_browser/{name}.py"
     for name in ("__init__", "auth", "main", "models", "policy", "runtime", "sessions")
 )
 TEXT_SUFFIXES = {
@@ -138,12 +138,12 @@ def _version_agreement() -> tuple[bool, str]:
     try:
         project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
         project_version = str(project["project"]["version"])
-        package_text = (ROOT / "src/aether_browser/__init__.py").read_text(encoding="utf-8")
+        package_text = (ROOT / "src/agent_browser/__init__.py").read_text(encoding="utf-8")
         package_match = re.search(r'__version__[^=]*=\s*["\']([^"\']+)', package_text)
         docker_text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         docker_match = re.search(r'org\.opencontainers\.image\.version="([^"]+)"', docker_text)
         compose_text = (ROOT / "docker-compose.yml").read_text(encoding="utf-8")
-        compose_match = re.search(r"image:\s*aether-browser:([^\s]+)", compose_text)
+        compose_match = re.search(r"image:\s*agent-browser:([^\s]+)", compose_text)
     except (OSError, KeyError, tomllib.TOMLDecodeError) as exc:
         return False, str(exc)
     versions = {
@@ -265,7 +265,7 @@ def _private_infrastructure_scan() -> tuple[bool, str]:
         r"(?i)(?<![a-z0-9_-])(?:\.(?:internal|lan|ts\.net)|"
         r"(?:[a-z0-9-]+\.)+(?:internal|lan|ts\.net))(?![a-z0-9_-])"
     )
-    policy_path = "src/aether_browser/policy.py"
+    policy_path = "src/agent_browser/policy.py"
     policy_denylist_blocks = (
         "_PROHIBITED_HOSTS",
         "_PROHIBITED_SUFFIXES",
@@ -382,26 +382,26 @@ def _container_loopback_contract() -> tuple[bool, str]:
     if re.search(r"(?m)^\s*ports:\s*$", compose) is not None:
         issues.append("Compose publishes container ports")
     compose_novnc_binds = re.findall(
-        r'(?m)^\s*AETHER_BROWSER_NOVNC_BIND:\s*["\']?([^"\'\s#]+)', compose
+        r'(?m)^\s*AGENT_BROWSER_NOVNC_BIND:\s*["\']?([^"\'\s#]+)', compose
     )
     if compose_novnc_binds != ["127.0.0.1"]:
         issues.append("Compose noVNC bind is not numeric loopback")
-    if 'AETHER_BROWSER_API_BIND: "127.0.0.1"' not in compose:
+    if 'AGENT_BROWSER_API_BIND: "127.0.0.1"' not in compose:
         issues.append("Compose API bind is not numeric loopback")
     if re.search(r"(?im)^\s*EXPOSE\b[^\n]*\b6080\b", dockerfile) is not None:
         issues.append("image advertises the unauthenticated noVNC port")
 
     entrypoint_contract = (
-        "${AETHER_BROWSER_NOVNC_BIND:-127.0.0.1}",
+        "${AGENT_BROWSER_NOVNC_BIND:-127.0.0.1}",
         '[ "$novnc_bind" != "127.0.0.1" ]',
         "x11vnc -display :99 -listen 127.0.0.1 -no6 -noipv6",
         "-rfbport 5900 -rfbportv6 -1 -httpportv6 -1",
         'websockify --web=/usr/share/novnc "$novnc_bind:$novnc_port"',
-        "python -m aether_browser.main &",
+        "python -m agent_browser.main &",
     )
     if any(fragment not in entrypoint for fragment in entrypoint_contract):
         issues.append("entrypoint does not enforce the noVNC loopback bind")
-    if "aether_browser.main:app" in entrypoint or "python -m uvicorn" in entrypoint:
+    if "agent_browser.main:app" in entrypoint or "python -m uvicorn" in entrypoint:
         issues.append("entrypoint bypasses the validated module launcher")
     browser_contract = (
         "python -m patchright install --with-deps chrome",
@@ -444,7 +444,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         "--cpus=2 --memory=2g",
         '--name "$fixture" --pod "$pod"',
         '--name "$browser" --pod "$pod"',
-        "AETHER_BROWSER_NOVNC_BIND=127.0.0.1",
+        "AGENT_BROWSER_NOVNC_BIND=127.0.0.1",
         "same-pod-namespace-proof",
         "pod-network-none-proof",
         "loopback-listener-proof",
@@ -452,7 +452,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         'headers={"Authorization": f"Bearer {sys.argv[4]}"}',
         'socket.create_connection(("127.0.0.1", 5900), timeout=1)',
         '"vnc-rfb-readiness"',
-        "find /tmp /home/aether -type f -name blocked.txt -print -quit",
+        "find /tmp /home/agent -type f -name blocked.txt -print -quit",
         '"download-non-persistence"',
         '"isolated-pod-network-none"',
         '"in-namespace-http-driver"',
@@ -463,7 +463,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
     )
     if any(fragment not in acceptance for fragment in acceptance_contract):
         issues.append("acceptance lacks the isolated-pod noVNC proof")
-    acceptance_novnc_binds = re.findall(r"AETHER_BROWSER_NOVNC_BIND=([^\s\\]+)", acceptance)
+    acceptance_novnc_binds = re.findall(r"AGENT_BROWSER_NOVNC_BIND=([^\s\\]+)", acceptance)
     if acceptance_novnc_binds != ["127.0.0.1"]:
         issues.append("acceptance noVNC bind is not uniquely numeric loopback")
     if acceptance.count("--pull=never") != 2:
@@ -486,7 +486,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         "id: image_proof",
         "image_id: ${{ steps.image_proof.outputs.image_id }}",
         'image_id="$(podman --remote image inspect '
-        "aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"",
+        "agent-browser:${GITHUB_SHA} --format '{{.Id}}')\"",
         "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}",
     )
     if any(fragment not in trusted_workflow for fragment in workflow_handoff):
@@ -709,7 +709,7 @@ def main() -> int:
     failed = sum(check.status == "FAIL" for check in checks)
     summary = {
         "schema_version": 1,
-        "gate": "aether-browser-release",
+        "gate": "agent-browser-release",
         "mode": "strict" if args.strict else "security" if args.security_only else "manifest",
         "result": "PASS" if failed == 0 else "FAIL",
         "counts": {

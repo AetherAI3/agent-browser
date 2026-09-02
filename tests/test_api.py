@@ -11,8 +11,8 @@ import pytest
 from fastapi import FastAPI
 from fixtures.runtime_fakes import FakeAdapterFactory, FakeClock
 
-from aether_browser.main import RequiredAuthority, RuntimeSettings, create_app
-from aether_browser.sessions import SessionManager
+from agent_browser.main import RequiredAuthority, RuntimeSettings, create_app
+from agent_browser.sessions import SessionManager
 
 OBSERVER_CANARY = "Observer-Api-Canary-0123456789!Alpha"
 CONTROLLER_CANARY = "Controller-Api-Canary-9876543210!Beta"

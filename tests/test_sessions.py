@@ -7,9 +7,9 @@ from uuid import uuid4
 import pytest
 from fixtures.runtime_fakes import FakeAdapter, FakeAdapterFactory, FakeClock
 
-from aether_browser.models import InteractRequest
-from aether_browser.runtime import BrowserLaunchError, BrowserNotReadyError, BrowserOperationError
-from aether_browser.sessions import (
+from agent_browser.models import InteractRequest
+from agent_browser.runtime import BrowserLaunchError, BrowserNotReadyError, BrowserOperationError
+from agent_browser.sessions import (
     SessionCapacityError,
     SessionExpiredError,
     SessionManager,
@@ -483,7 +483,7 @@ async def test_profile_cleanup_failure_is_retriable_and_blocks_success(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import aether_browser.sessions as sessions_module
+    import agent_browser.sessions as sessions_module
 
     factory = FakeAdapterFactory()
     manager = build_manager(factory, FakeClock(), tmp_path)
@@ -567,9 +567,9 @@ def test_boolean_environment_settings_reject_noncanonical_values(
     monkeypatch: pytest.MonkeyPatch,
     value: str,
 ) -> None:
-    from aether_browser.main import RuntimeSettings
+    from agent_browser.main import RuntimeSettings
 
-    monkeypatch.setenv("AETHER_BROWSER_TEST_MODE", value)
+    monkeypatch.setenv("AGENT_BROWSER_TEST_MODE", value)
     with pytest.raises(ValueError, match="must be exactly '0' or '1'"):
         RuntimeSettings.from_environment()
 
@@ -577,11 +577,11 @@ def test_boolean_environment_settings_reject_noncanonical_values(
 @pytest.mark.parametrize(
     ("name", "value"),
     [
-        ("AETHER_BROWSER_API_PORT", "0"),
-        ("AETHER_BROWSER_API_PORT", "not-a-port"),
-        ("AETHER_BROWSER_IDLE_TIMEOUT_SECONDS", "nan"),
-        ("AETHER_BROWSER_IDLE_TIMEOUT_SECONDS", " 5 "),
-        ("AETHER_BROWSER_ABSOLUTE_LIFETIME_SECONDS", "inf"),
+        ("AGENT_BROWSER_API_PORT", "0"),
+        ("AGENT_BROWSER_API_PORT", "not-a-port"),
+        ("AGENT_BROWSER_IDLE_TIMEOUT_SECONDS", "nan"),
+        ("AGENT_BROWSER_IDLE_TIMEOUT_SECONDS", " 5 "),
+        ("AGENT_BROWSER_ABSOLUTE_LIFETIME_SECONDS", "inf"),
     ],
 )
 def test_numeric_environment_settings_fail_closed(
@@ -589,7 +589,7 @@ def test_numeric_environment_settings_fail_closed(
     name: str,
     value: str,
 ) -> None:
-    from aether_browser.main import RuntimeSettings
+    from agent_browser.main import RuntimeSettings
 
     monkeypatch.setenv(name, value)
     with pytest.raises(ValueError):
@@ -630,7 +630,7 @@ async def test_observer_authority_cannot_reach_mutating_routes(
     from httpx import ASGITransport, AsyncClient
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
-    from aether_browser.main import RequiredAuthority, RuntimeSettings, create_app
+    from agent_browser.main import RequiredAuthority, RuntimeSettings, create_app
 
     factory = FakeAdapterFactory()
     required_levels: list[RequiredAuthority] = []
@@ -666,7 +666,7 @@ async def test_navigation_policy_denial_happens_before_the_adapter_call(tmp_path
     from httpx import ASGITransport, AsyncClient
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
-    from aether_browser.main import RuntimeSettings, create_app
+    from agent_browser.main import RuntimeSettings, create_app
 
     factory = FakeAdapterFactory()
     manager = build_manager(factory, FakeClock(), tmp_path)

@@ -3,13 +3,25 @@ requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "aether-browser"
+name = "agent-browser"
 version = "0.1.0"
 description = "Self-hosted Chrome runtime for AI agents with API control and a live noVNC view."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "Apache-2.0" }
-authors = [{ name = "Aether" }]
+authors = [{ name = "Aether AI" }]
+keywords = ["browser", "automation", "agents", "chrome", "novnc", "self-hosted"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Web Environment",
+  "Framework :: FastAPI",
+  "Intended Audience :: Developers",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Internet :: WWW/HTTP :: Browsers",
+  "Typing :: Typed",
+]
 dependencies = [
   "fastapi==0.141.1",
   "httpx==0.28.1",
@@ -28,6 +40,12 @@ dev = [
   "pytest-cov==7.1.0",
   "ruff==0.16.5",
 ]
+
+[project.urls]
+Homepage = "https://github.com/AetherAI3/agent-browser"
+Repository = "https://github.com/AetherAI3/agent-browser"
+Issues = "https://github.com/AetherAI3/agent-browser/issues"
+Changelog = "https://github.com/AetherAI3/agent-browser/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -48,7 +66,7 @@ ignore = ["S101"]
 [tool.mypy]
 python_version = "3.11"
 strict = true
-packages = ["aether_browser"]
+packages = ["agent_browser"]
 mypy_path = "src"
 plugins = ["pydantic.mypy"]
 

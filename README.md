@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="assets/aether-browser-logo.jpg" alt="Pixel-art computer displaying a globe and pointer, the Aether Browser logo" width="520">
+  <img src="assets/agent-browser-logo.png" alt="Pixel-art computer displaying a globe and pointer, the Agent Browser logo" width="520">
 </p>
 
-<h1 align="center">Aether Browser</h1>
+<h1 align="center">Agent Browser</h1>
+<p align="center"><strong>by Aether AI</strong></p>
 <h2 align="center">See what your agent sees.</h2>
 
 <p align="center">
@@ -11,8 +12,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/AetherAI3/aetherbrowser/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/AetherAI3/aetherbrowser/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="Aether source license: Apache-2.0" src="https://img.shields.io/badge/source%20license-Apache--2.0-0b7285"></a>
+  <a href="https://github.com/AetherAI3/agent-browser/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/AetherAI3/agent-browser/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="Source license: Apache-2.0" src="https://img.shields.io/badge/source%20license-Apache--2.0-0b7285"></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ed">
   <img alt="Self-hosted" src="https://img.shields.io/badge/runtime-self--hosted-2f9e44">
@@ -23,11 +24,12 @@
   <a href="docs/API.md">API</a> ·
   <a href="docs/SECURITY.md">Security model</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
   <a href="docs/RELEASE_EVIDENCE.md">Release status</a>
 </p>
 
 > [!IMPORTANT]
-> **Aether Browser v0.1.0 is a source-first, self-hosted release candidate.** It is not a hosted
+> **Agent Browser v0.1.0 is a source-first, self-hosted release candidate.** It is not a hosted
 > service. No Chrome-containing image, image tar, or public layer cache is distributed unless
 > separate redistribution authorization is documented.
 
@@ -35,7 +37,7 @@
 
 <p align="center">
   <a href="assets/demo.mp4">
-    <img src="assets/demo-poster.png" alt="Aether Browser exact-image runtime demo" width="760">
+    <img src="assets/demo-poster.png" alt="Agent Browser exact-image runtime demo" width="760">
   </a>
 </p>
 
@@ -100,7 +102,7 @@ The same flow is available as [`examples/curl.sh`](examples/curl.sh).
    and a PNG of that same page.
 4. The human view and API did not create competing browsers: they met at one owned session.
 
-## Why Aether Browser
+## Why Agent Browser
 
 - **One session, two participants.** Agents act through JSON while a human can watch and take
   over the exact display locally.
@@ -204,4 +206,4 @@ remain under their respective terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_
 Aether is not affiliated with or endorsed by Google. The v0.1 distribution target is source that
 builds locally; this repository does not distribute a prebuilt Chrome-containing image.
 
-<p align="center"><strong>Aether Browser</strong> · See what your agent sees.</p>
+<p align="center"><strong>Agent Browser</strong> · See what your agent sees.</p>

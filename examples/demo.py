@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive one local Aether Browser session with only the Python standard library."""
+"""Drive one local Agent Browser session with only the Python standard library."""
 
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--api-base",
-        default=os.environ.get("AETHER_BROWSER_API_BASE", "http://127.0.0.1:8092"),
+        default=os.environ.get("AGENT_BROWSER_API_BASE", "http://127.0.0.1:8092"),
         help="numeric-loopback API origin",
     )
     parser.add_argument(
@@ -103,12 +103,12 @@ def main() -> int:
     )
     parser.add_argument(
         "--controller-token",
-        default=os.environ.get("AETHER_BROWSER_CONTROLLER_TOKEN"),
+        default=os.environ.get("AGENT_BROWSER_CONTROLLER_TOKEN"),
         help="controller bearer token when authenticated mode is enabled",
     )
     parser.add_argument(
         "--observer-token",
-        default=os.environ.get("AETHER_BROWSER_OBSERVER_TOKEN"),
+        default=os.environ.get("AGENT_BROWSER_OBSERVER_TOKEN"),
         help="observer bearer token when authenticated mode is enabled",
     )
     args = parser.parse_args()

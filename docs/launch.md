@@ -1,4 +1,4 @@
-# Aether Browser launch kit
+# Agent Browser launch kit
 
 > **GitHub source publication is owner-approved once the exact-release evidence record is
 > complete.** Pages and social drafts are separate launch channels and should be activated only
@@ -7,7 +7,7 @@
 
 ## Shared facts
 
-- Name: **Aether Browser**
+- Name: **Agent Browser**
 - Tagline: **See what your agent sees.**
 - Positioning: Self-hosted Google Chrome for AI agents with bounded API control, structured snapshots,
   a live local noVNC view, and human takeover of the same session.
@@ -18,9 +18,9 @@
 
 ## GitHub Release
 
-### Aether Browser v0.1.0 — See what your agent sees
+### Agent Browser v0.1.0 — See what your agent sees
 
-Aether Browser runs one headed Google Chrome Stable session that an agent controls through a small JSON API
+Agent Browser runs one headed Google Chrome Stable session that an agent controls through a small JSON API
 while a human watches or takes over the same local display through noVNC.
 
 The v0.1 source release includes:
@@ -44,9 +44,9 @@ checksums, known limitations, and third-party notice status are recorded in the 
 
 ## Show HN
 
-### Show HN: Aether Browser — self-hosted Chrome an agent and human can share
+### Show HN: Agent Browser — self-hosted Chrome an agent and human can share
 
-I built Aether Browser around one simple interaction: an agent controls a headed Chrome session
+I built Agent Browser around one simple interaction: an agent controls a headed Chrome session
 through a bounded JSON API while you watch or take over the exact same local display through
 noVNC.
 
@@ -60,9 +60,9 @@ API contract, the local human-takeover workflow, and the documented security bou
 
 ## Reddit
 
-### Aether Browser: self-hosted Chrome with API control and a live local noVNC view
+### Agent Browser: self-hosted Chrome with API control and a live local noVNC view
 
-Aether Browser gives an AI agent a small browser-control API and gives the human operator the live
+Agent Browser gives an AI agent a small browser-control API and gives the human operator the live
 view of that same headed session. It exposes bounded structured state plus screenshots, supports a
 narrow set of browser actions, and makes session ownership and cleanup explicit.
 
@@ -75,9 +75,9 @@ and the observer/controller boundary.
 
 ## Dev.to
 
-### Building Aether Browser: one headed session for an agent and its human operator
+### Building Agent Browser: one headed session for an agent and its human operator
 
-Most browser automation tools optimize for invisible execution. Aether Browser starts from a
+Most browser automation tools optimize for invisible execution. Agent Browser starts from a
 different product requirement: the agent and the human should meet in one owned, visible browser
 session.
 
@@ -96,7 +96,7 @@ security documentation, rootless acceptance tooling, and exact-commit release ev
 
 ## Short social copy
 
-**Aether Browser — See what your agent sees.**
+**Agent Browser — See what your agent sees.**
 
 Self-hosted Chrome with bounded API control, structured snapshots, and a live local noVNC view
 for human takeover of the same session. Linux quickstart: `docker compose up --build`.

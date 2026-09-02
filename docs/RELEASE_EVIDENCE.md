@@ -20,15 +20,15 @@ did not execute this release build; see [Host attestation scope](#host-attestati
 
 | Gate | Required evidence | Recorded result |
 |---|---|---|
-| Clean checkout | exact commit and clean status | `ref-proof` resolved `main` to `055f6878…`; every downstream job checked out and re-verified that exact SHA ([job](https://github.com/AetherAI3/aetherbrowser/actions/runs/33612893919/job/100191969603)) |
-| Hosted CI | exact-commit run URL and job matrix | `ci` succeeded at `055f6878…`: [run 33612893930](https://github.com/AetherAI3/aetherbrowser/actions/runs/33612893930) |
+| Clean checkout | exact commit and clean status | `ref-proof` resolved `main` to `055f6878…`; every downstream job checked out and re-verified that exact SHA ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33612893919/job/100191969603)) |
+| Hosted CI | exact-commit run URL and job matrix | `ci` succeeded at `055f6878…`: [run 33612893930](https://github.com/AetherAI3/agent-browser/actions/runs/33612893930) |
 | Trusted runner | runner labels, exact commit, service isolation | GitHub-hosted `ubuntu-24.04`; rootless Podman API bound to a private per-job socket; acceptance ran in an isolated pod with `--network none` |
 | Static and unit checks | command, counts, and run URL | `ruff format --check`, `ruff check`, `mypy src`, and `pytest -q` all passed inside the strict gate (`quality`: "format, lint, typing, and tests passed") |
 | Dependency audit | locked input and result | `dependency-audit` PASS — locked `requirements.lock` consistency and vulnerability audit passed |
 | SBOM and vulnerability scan | artifact names and SHA-256 | Syft `1.51.1` → `sbom.spdx.json` (`fdaa4fd80700b79210aaa426344888df3db8436f783f59f44dd0a60f23867deb`, 629 packages); Grype `0.118.0` → `vulnerabilities.json` (`41dc5cc366c2c63d91930b40d152a5c18f51040990c112cbd5b82944425727f8`) |
 | Rootless image build | image ID and base digest | Image ID `sha256:a9253e91fcda87e56dd0c695f68a2da3e9defad7a3e347faa71c060c78a4b101`; base `docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84`; final image runs as `USER 10001:10001` |
-| Isolated acceptance | exact image ID, network proof, cleanup proof | `acceptance.json` = PASS over 33 checks against the same image ID, including `isolated-pod-network-none`, `same-pod-namespace`, `loopback-listener-proof`, `process-cleanup`, `profile-cleanup`, and `pod-cleanup` ([job](https://github.com/AetherAI3/aetherbrowser/actions/runs/33612893919/job/100193455090)) |
-| README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/aetherbrowser/actions/runs/33612893919/job/100192012527)) |
+| Isolated acceptance | exact image ID, network proof, cleanup proof | `acceptance.json` = PASS over 33 checks against the same image ID, including `isolated-pod-network-none`, `same-pod-namespace`, `loopback-listener-proof`, `process-cleanup`, `profile-cleanup`, and `pod-cleanup` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33612893919/job/100193455090)) |
+| README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33612893919/job/100192012527)) |
 | Demo | link to `DEMO_EVIDENCE.md` | [`docs/DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md) records the generated media, its provenance, and its limits |
 | Third-party review | Chrome terms, exact package/credits, notices, and redistribution decision | `Google Chrome 152.0.7977.75`, package `google-chrome-stable 152.0.7977.75-1`, `amd64`; `installed-notices.tar.gz` (`b0ed7eadfa2872fe0a7366c871c2652282a299d0bdbc7df50b3eb8b186bf4cc7`); distribution is source-only |
 | Repository state | visibility and open-PR review | Repository published with branch protection on `main` (strict, linear history; force-push and deletion disabled); no open pull request or unresolved review thread blocks this candidate |
@@ -53,10 +53,10 @@ Passing gate checks at the runtime commit: `required-core-files`, `required-sour
 Once the evidence artifacts above were committed, the `release-evidence` workflow re-ran on the
 resulting commit `2ebdf2c84b5d166cda8174bb748e183e027ae910` and the strict gate passed with every
 job green:
-[run 33614883928](https://github.com/AetherAI3/aetherbrowser/actions/runs/33614883928) —
+[run 33614883928](https://github.com/AetherAI3/agent-browser/actions/runs/33614883928) —
 `ref-proof`, `container`, `quickstart`, `acceptance`, and `release-integrity` all reported
 `success`. The matching exact-commit `ci` run also succeeded:
-[run 33614883864](https://github.com/AetherAI3/aetherbrowser/actions/runs/33614883864).
+[run 33614883864](https://github.com/AetherAI3/agent-browser/actions/runs/33614883864).
 
 The machine-readable attestation emitted by that run is committed verbatim at
 [`release/evidence/manifest.json`](../release/evidence/manifest.json), which records

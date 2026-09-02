@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Aether Browser is preparing its first public source release candidate. Security fixes are made
+Agent Browser is preparing its first public source release candidate. Security fixes are made
 on the current `main` branch; no older release line is supported yet.
 
 | Version | Supported |
@@ -15,7 +15,7 @@ on the current `main` branch; no older release line is supported yet.
 Do not disclose a suspected vulnerability in a public issue, pull request, discussion, log, or
 demo. Use GitHub's private vulnerability-reporting flow:
 
-<https://github.com/AetherAI3/aetherbrowser/security/advisories/new>
+<https://github.com/AetherAI3/agent-browser/security/advisories/new>
 
 If that form is unavailable while the repository is private, contact the AetherAI3 organization
 through a private contact method shown on its GitHub profile. Do not include credentials,

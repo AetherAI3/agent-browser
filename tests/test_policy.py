@@ -6,7 +6,7 @@ from collections.abc import Iterable
 
 import pytest
 
-from aether_browser.policy import (
+from agent_browser.policy import (
     NavigationGuard,
     NavigationPolicy,
     PolicyConfigurationError,

@@ -1,4 +1,4 @@
-# Contributing to Aether Browser
+# Contributing to Agent Browser
 
 Thank you for helping build a small, inspectable browser runtime for agents. The most useful
 contributions preserve the v0.1 authority boundary, keep behavior deterministic, and make claims
@@ -15,7 +15,7 @@ only when an exact commit proves them.
 
 ## Development setup
 
-Aether Browser requires Python 3.11 or later. The repository lock includes the development
+Agent Browser requires Python 3.11 or later. The repository lock includes the development
 tools used by CI.
 
 ```bash

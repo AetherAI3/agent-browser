@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible Aether Browser defect without sensitive data.
+description: Report a reproducible Agent Browser defect without sensitive data.
 title: "[Bug] "
 labels:
   - bug
