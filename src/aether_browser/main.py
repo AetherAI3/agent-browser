@@ -52,6 +52,7 @@ from aether_browser.runtime import (
 from aether_browser.sessions import (
     AdapterFactory,
     SessionCapacityError,
+    SessionError,
     SessionExpiredError,
     SessionManager,
     SessionNotFoundError,
@@ -432,6 +433,17 @@ def create_app(
             error.code,
             error.status_code,
             retry_after_seconds=error.retry_after_seconds,
+        )
+
+    @application.exception_handler(SessionError)
+    async def session_error_handler(_request: Request, error: SessionError) -> JSONResponse:
+        fault = _known_fault(error)
+        if fault is None:  # pragma: no cover - every concrete session error is mapped
+            raise error
+        return _error_response(
+            fault.code,
+            fault.status_code,
+            retry_after_seconds=fault.retry_after_seconds,
         )
 
     @application.exception_handler(RequestValidationError)

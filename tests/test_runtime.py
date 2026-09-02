@@ -9,6 +9,7 @@ import types
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 
@@ -500,7 +501,9 @@ async def test_launch_installs_pinned_socks_only_configuration(
         assert captured["channel"] == "chrome"
         args = set(captured["args"])
         assert "--proxy-bypass-list=<-loopback>" in args
-        assert "--host-resolver-rules=MAP * ~NOTFOUND" in args
+        proxy_host = urlsplit(str(proxy["server"])).hostname
+        assert proxy_host == "127.0.0.1"
+        assert f"--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE {proxy_host}" in args
         assert "--disable-quic" in args
         assert "--disable-http2" in args
         assert "--force-webrtc-ip-handling-policy=disable_non_proxied_udp" in args
