@@ -17,9 +17,10 @@ demo. Use GitHub's private vulnerability-reporting flow:
 
 <https://github.com/AetherAI3/agent-browser/security/advisories/new>
 
-If that form is unavailable while the repository is private, contact the AetherAI3 organization
-through a private contact method shown on its GitHub profile. Do not include credentials,
-session material, live host details, or personal data in an unencrypted public channel.
+Private vulnerability reporting is enabled on this repository, so that form is the preferred
+channel. If it is ever unavailable to you, contact the AetherAI3 organization through a private
+contact method shown on its GitHub profile. Do not include credentials, session material,
+live host details, or personal data in an unencrypted public channel.
 
 Include, when safe:
 
