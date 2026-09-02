@@ -116,6 +116,9 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     assert "--fail-on high --only-fixed --output json" in text
     assert "> artifacts/vulnerabilities.json" in text
     assert "> artifacts/browser-package.txt" in text
+    assert "podman --remote run --rm -i --pull=never --http-proxy=false" in text
+    assert "test -s artifacts/python-distributions.json" in text
+    assert "python -m json.tool artifacts/python-distributions.json" in text
     assert "/opt/google/chrome/chrome --version" in text
     assert r"grep -Eq '^Google Chrome [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$'" in text
     for job in ("container", "acceptance", "quickstart", "release-integrity"):
@@ -249,6 +252,7 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     assert '"$(id -u):$(id -g):600"' in text
     assert 'expected_sha="${GITHUB_SHA:-}"' in text
     assert 'expected_image_id="${AETHER_ACCEPTANCE_IMAGE_ID:-}"' in text
+    assert text.count('"Aa1!" + secrets.token_urlsafe(32)') == 2
     assert "image inspect \"$image_tag\" --format '{{.Id}}'" in text
     assert 'actual_image_hash="${actual_image_id#sha256:}"' in text
     assert 'if [ "$actual_image_hash" != "$image_hash" ]' in text
@@ -261,6 +265,9 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     assert "same-pod-namespace-proof" in text
     assert "pod-network-none-proof" in text
     assert '"${podman_cli[@]}" exec -i "$fixture" python -' in text
+    assert 'headers={"Authorization": f"Bearer {sys.argv[4]}"}' in text
+    assert "find /tmp /home/aether -type f -name blocked.txt -print -quit" in text
+    assert '"download-non-persistence"' in text
     assert '"isolated-pod-network-none"' in text
     assert '"in-namespace-http-driver"' in text
     assert '"exact-image-id-handoff"' in text

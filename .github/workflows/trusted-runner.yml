@@ -203,7 +203,7 @@ jobs:
           grype --config .grype.yaml "sbom:artifacts/sbom.spdx.json" \
             --fail-on high --only-fixed --output json \
             > artifacts/vulnerabilities.json
-          podman --remote run --rm --pull=never --http-proxy=false \
+          podman --remote run --rm -i --pull=never --http-proxy=false \
             --entrypoint python "$IMAGE_ID" -I - <<'PY' \
             > artifacts/python-distributions.json
           import importlib.metadata
@@ -221,6 +221,8 @@ jobs:
               )
           print(json.dumps(sorted(records, key=lambda item: item["name"].lower()), indent=2))
           PY
+          test -s artifacts/python-distributions.json
+          python -m json.tool artifacts/python-distributions.json >/dev/null
           podman --remote run --rm --pull=never --http-proxy=false \
             --entrypoint sh "$IMAGE_ID" -c \
             "find /usr/share/doc /opt/google/chrome /opt/patchright-browsers -type f \
