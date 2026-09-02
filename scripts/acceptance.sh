@@ -159,8 +159,23 @@ class Handler(BaseHTTPRequestHandler):
 ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
 PY
 
+# The fixture pod must never receive a managed /etc/hosts. Podman 5 spells that
+# --hosts-file none and Podman 4 spells it --no-hosts, and hosted runner images have
+# shipped both. Detect the supported spelling instead of pinning one, and fail closed
+# if neither exists rather than quietly creating a pod with host entries.
+pod_hosts_flag=""
+pod_create_help="$("${podman_cli[@]}" pod create --help 2>/dev/null || true)"
+if printf '%s' "$pod_create_help" | grep -q -- "--hosts-file"; then
+  pod_hosts_flag="--hosts-file=none"
+elif printf '%s' "$pod_create_help" | grep -q -- "--no-hosts"; then
+  pod_hosts_flag="--no-hosts"
+else
+  echo "podman pod create supports neither --hosts-file nor --no-hosts" >&2
+  exit 1
+fi
+
 "${podman_cli[@]}" pod create \
-  --name "$pod" --network none --share net --hosts-file none \
+  --name "$pod" --network none --share net "$pod_hosts_flag" \
   --cpus=2 --memory=2g >/dev/null
 pod_created=true
 
