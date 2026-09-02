@@ -809,6 +809,11 @@ class PatchrightBrowserAdapter:
         while self._event_tasks:
             tasks = asyncio.gather(*tuple(self._event_tasks), return_exceptions=True)
             cancellation = await _drain_owned_task(tasks, cancellation)
+            if cancellation is not None:
+                # The batch that existed when cancellation arrived is settled.
+                # Later hooks remain adapter-owned, but cannot extend caller
+                # cancellation indefinitely under an event-flooding page.
+                break
         if cancellation is not None:
             raise cancellation
 

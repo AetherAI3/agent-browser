@@ -286,6 +286,7 @@ async def test_click_waits_for_popup_denial_and_restores_primary_page() -> None:
 async def test_click_cancellation_waits_for_popup_denial() -> None:
     adapter, page = launched_adapter()
     popup = BlockingFakeExtraPage()
+    later_popup = BlockingFakeExtraPage()
     page.click_hook = lambda: adapter._handle_new_page_event(popup)
 
     click_task = asyncio.create_task(adapter.click(selector="#popup"))
@@ -294,12 +295,22 @@ async def test_click_cancellation_waits_for_popup_denial() -> None:
     await asyncio.sleep(0)
 
     assert not click_task.done()
+    adapter._handle_new_page_event(later_popup)
+    await later_popup.close_started.wait()
     popup.allow_close.set()
+
+    done, _pending = await asyncio.wait({click_task}, timeout=0.1)
+    assert click_task in done
     with pytest.raises(asyncio.CancelledError):
-        await click_task
+        click_task.result()
 
     assert popup.closed
+    assert not later_popup.closed
     assert ("bring-to-front",) in page.calls
+
+    later_popup.allow_close.set()
+    await adapter.drain_boundary_events()
+    assert later_popup.closed
 
 
 @pytest.mark.asyncio
