@@ -266,6 +266,8 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     assert "pod-network-none-proof" in text
     assert '"${podman_cli[@]}" exec -i "$fixture" python -' in text
     assert 'headers={"Authorization": f"Bearer {sys.argv[4]}"}' in text
+    assert 'socket.create_connection(("127.0.0.1", 5900), timeout=1)' in text
+    assert '"vnc-rfb-readiness"' in text
     assert "find /tmp /home/aether -type f -name blocked.txt -print -quit" in text
     assert '"download-non-persistence"' in text
     assert '"isolated-pod-network-none"' in text

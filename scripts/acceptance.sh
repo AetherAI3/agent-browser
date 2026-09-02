@@ -232,6 +232,7 @@ for _ in $(seq 1 120); do
     python - "$api_base" "$novnc_base" "$fixture_origin" "$observer_token" \
       <<'PY' >/dev/null 2>&1
 import json
+import socket
 import sys
 import urllib.request
 
@@ -245,7 +246,17 @@ with urllib.request.urlopen(sys.argv[2] + "/vnc.html", timeout=1) as response:
     novnc_ready = response.status == 200
 with urllib.request.urlopen(sys.argv[3] + "/", timeout=1) as response:
     fixture_ready = response.status == 200
-raise SystemExit(0 if body.get("status") == "ok" and novnc_ready and fixture_ready else 1)
+with socket.create_connection(("127.0.0.1", 5900), timeout=1) as connection:
+    banner = b""
+    while len(banner) < 12:
+        chunk = connection.recv(12 - len(banner))
+        if not chunk:
+            break
+        banner += chunk
+    vnc_ready = banner.startswith(b"RFB ")
+raise SystemExit(
+    0 if body.get("status") == "ok" and novnc_ready and fixture_ready and vnc_ready else 1
+)
 PY
   then ready=true; break; fi
   sleep 0.5
@@ -282,7 +293,10 @@ for service, raw_port in zip(("api", "novnc", "vnc"), sys.argv[1:], strict=True)
     ipv4 = listening_addresses("/proc/net/tcp", port)
     ipv6 = listening_addresses("/proc/net/tcp6", port)
     if ipv4 != {"0100007F"} or ipv6:
-        raise SystemExit(f"{service} listener is not exclusively IPv4 loopback")
+        raise SystemExit(
+            f"{service} listener is not exclusively IPv4 loopback "
+            f"(ipv4={sorted(ipv4)!r}, ipv6={sorted(ipv6)!r})"
+        )
 PY
 
 "${podman_cli[@]}" exec -i "$fixture" python - \
@@ -574,6 +588,7 @@ print(json.dumps({
         "observer-refusal", "controller-success", "navigation", "snapshot", "click", "type",
         "press", "scroll", "second-snapshot", "direct-ssrf-refusal", "redirect-refusal",
         "download-non-persistence", "popup-bounded", "novnc-web", "novnc-websocket",
+        "vnc-rfb-readiness",
         "loopback-listener-proof",
         "same-display-color-proof", "idempotent-end", "process-cleanup", "profile-cleanup",
         "pod-cleanup",
