@@ -1,9 +1,10 @@
 # Agent Browser launch kit
 
-> **GitHub source publication is owner-approved once the exact-release evidence record is
-> complete.** Pages and social drafts are separate launch channels and should be activated only
-> as deliberate post-gate actions. Chrome-containing images, archives, and public layer caches
-> remain prohibited without separately documented redistribution authorization.
+> **Status: published.** The repository is public, `v0.1.0-rc.1` is tagged and released, and the
+> client is on npm as [`aether-browser`](https://www.npmjs.com/package/aether-browser). The copy
+> below is ready to post; each channel is still a deliberate, separate action. Chrome-containing
+> images, archives, and public layer caches remain prohibited without separately documented
+> redistribution authorization.
 
 ## Shared facts
 
@@ -12,13 +13,16 @@
 - Positioning: Self-hosted Google Chrome for AI agents with bounded API control, structured snapshots,
   a live local noVNC view, and human takeover of the same session.
 - Quickstart: `docker compose up --build` on Linux Docker Engine.
+- Client: `npm install aether-browser` — TypeScript client and CLI, zero runtime dependencies.
+- Repository: <https://github.com/AetherAI3/agent-browser>
+- Release: `v0.1.0-rc.1` (prerelease, source-only).
 - Distribution: Apache-2.0 Aether-owned source; locally built container for v0.1.
 - Boundary: no hosted-service claim, no remote noVNC claim, and no Chrome-containing image, image
   tar, or public layer-cache publication unless separate redistribution authorization is documented.
 
 ## GitHub Release
 
-### Agent Browser v0.1.0 — See what your agent sees
+### Agent Browser v0.1.0-rc.1 — See what your agent sees
 
 Agent Browser runs one headed Google Chrome Stable session that an agent controls through a small JSON API
 while a human watches or takes over the same local display through noVNC.
@@ -30,13 +34,16 @@ The v0.1 source release includes:
 - bounded readable text, accessibility state, viewport metadata, and PNG snapshots;
 - numeric-loopback API and noVNC defaults;
 - SSRF, redirect, DNS-rebinding, browser-egress, and WebRTC escape controls; and
-- Docker Compose quickstart plus rootless isolated acceptance tooling.
+- Docker Compose quickstart plus rootless isolated acceptance tooling; and
+- a published TypeScript client and CLI, `aether-browser` on npm, with zero runtime dependencies.
 
 Start on Linux with:
 
 ```bash
 docker compose up --build
 ```
+
+and drive it with `npm install aether-browser`.
 
 Then open `http://127.0.0.1:6080/vnc.html` and follow the README API example. Review the security
 model before changing any listener or authority setting. Commit-bound verification, artifact

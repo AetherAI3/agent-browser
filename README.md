@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/AetherAI3/agent-browser/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/AetherAI3/agent-browser/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://www.npmjs.com/package/aether-browser"><img alt="npm: aether-browser" src="https://img.shields.io/npm/v/aether-browser?color=cb3837&label=npm%3A%20aether-browser"></a>
   <a href="LICENSE"><img alt="Source license: Apache-2.0" src="https://img.shields.io/badge/source%20license-Apache--2.0-0b7285"></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ed">
@@ -29,10 +30,20 @@
   <a href="docs/RELEASE_EVIDENCE.md">Release status</a>
 </p>
 
-> [!IMPORTANT]
-> **Agent Browser v0.1.0 is a source-first, self-hosted release candidate.** It is not a hosted
-> service. No Chrome-containing image, image tar, or public layer cache is distributed unless
-> separate redistribution authorization is documented.
+## One session, two participants
+
+Most browser tooling for agents hands the model a browser you cannot see. When it misreads a page
+or stalls on a login, you get a transcript and a guess.
+
+Agent Browser runs **one headed Google Chrome Stable session**. The agent drives it through a
+bounded JSON API, and a live noVNC view of that **same** session is open in front of you. When the
+agent gets stuck, you take over in the window it is already using — no second browser, no replay,
+no reconstructing what it saw.
+
+```bash
+docker compose up --build          # start the runtime
+npm install aether-browser          # drive it from TypeScript
+```
 
 ### Exact-release demo
 
@@ -45,6 +56,12 @@
 The poster and video are assembled from real API and same-display frames captured during the
 immutable-image acceptance run. Their commit, image ID, workflow run, and checksums are recorded
 in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md); the social preview is not runtime proof.
+
+> [!IMPORTANT]
+> **Agent Browser v0.1.0-rc.1 is a source-first, self-hosted release candidate.** It is not a
+> hosted service, and the v0.1 noVNC surface is unauthenticated and meant for numeric loopback on a
+> machine you control. No Chrome-containing image, image tar, or public layer cache is distributed
+> unless separate redistribution authorization is documented.
 
 ## Quickstart
 
@@ -209,22 +226,27 @@ and credential injection are excluded from the public core. Provenance status is
 
 ## Roadmap
 
-Four intentionally separable contribution tracks are prepared for publication after the v0.1
-contract is frozen:
+**Shipped.** The TypeScript client and CLI are published as
+[`aether-browser`](https://www.npmjs.com/package/aether-browser) on npm and live in
+[`clients/node`](clients/node).
 
-1. TypeScript client for the current API contract.
-2. Python context-manager SDK.
-3. Multi-session worker pool with explicit isolation and capacity semantics.
-4. Session trace and recording export with clear privacy controls.
+Three separable contribution tracks remain open, each with an issue:
 
-These are roadmap candidates, not shipped features or fabricated issue links.
+1. [Python context-manager SDK](https://github.com/AetherAI3/agent-browser/issues/13).
+2. [Multi-session worker pool](https://github.com/AetherAI3/agent-browser/issues/14) with explicit
+   isolation and capacity semantics.
+3. [Session trace and recording export](https://github.com/AetherAI3/agent-browser/issues/15) with
+   clear privacy controls.
+
+These three are roadmap candidates, not shipped features.
 
 ## Contributing
 
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), the
 [`Code of Conduct`](CODE_OF_CONDUCT.md), and the current [`API contract`](docs/API.md). Small,
-well-tested changes that preserve the narrow authority boundary are welcome once the repository
-is published. Security reports use the private process in [`SECURITY.md`](SECURITY.md).
+well-tested changes that preserve the narrow authority boundary are welcome. The three open
+roadmap issues above are the best place to start. Security reports use the private process in
+[`SECURITY.md`](SECURITY.md).
 
 ## License and third-party notices
 
