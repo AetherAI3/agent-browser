@@ -408,7 +408,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
     acceptance_contract = (
         "podman_cli=(podman --remote)",
         'default_podman_socket="/run/aether-ci-browser-podman.sock"',
-        'AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET',
+        "AETHER_ACCEPTANCE_EPHEMERAL_PODMAN_SOCKET",
         '"${GITHUB_ACTIONS:-}" != "true"',
         '"$RUNNER_TEMP"/*',
         "stat -Lc '%u:%g:%a'",
@@ -506,9 +506,7 @@ def _release_evidence() -> tuple[bool, str]:
     )
     if not ancestor_ok:
         return False, f"runtime commit is not an ancestor: {ancestor_detail}"
-    diff_ok, diff_detail = _run(
-        ["git", "diff", "--name-only", f"{candidate}..{head}"], timeout=30
-    )
+    diff_ok, diff_detail = _run(["git", "diff", "--name-only", f"{candidate}..{head}"], timeout=30)
     if not diff_ok:
         return False, diff_detail
     changed = {line for line in diff_detail.splitlines() if line}
