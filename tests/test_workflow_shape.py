@@ -108,7 +108,7 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     # proved SHA. Reintroducing an indirect ref would reopen the cache-poisoning path.
     assert text.count("ref: ${{ github.sha }}") == 4
     assert "ref: ${{ needs.ref-proof.outputs.sha }}" not in text
-    assert text.count('TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}') == 5
+    assert text.count("TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}") == 5
     assert text.count("git rev-parse --verify HEAD^{commit}") == 5
     assert "id: image_proof" in text
     assert "image_id: ${{ steps.image_proof.outputs.image_id }}" in text
@@ -181,7 +181,7 @@ def test_staging_smoke_is_manual_exact_main_only() -> None:
     # Same trusted-ref contract as the release workflow; see the comment there.
     assert text.count("ref: ${{ github.sha }}") == 1
     assert "ref: ${{ needs.ref-proof.outputs.sha }}" not in text
-    assert 'TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}' in text
+    assert "TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}" in text
 
 
 def test_package_installs_cannot_escape_the_hash_lock_via_build_isolation() -> None:
