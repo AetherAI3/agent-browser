@@ -271,7 +271,13 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     assert '"${browser_image#sha256:}" != "$image_hash"' in text
     assert '"${fixture_image#sha256:}" != "$image_hash"' in text
     assert '"${podman_cli[@]}" pod create' in text
-    assert '--name "$pod" --network none --share net --hosts-file none' in text
+    # The pod must never get a managed /etc/hosts. Podman 5 and Podman 4 spell that
+    # differently, so the script detects the supported flag and fails closed if neither
+    # exists. Pin all three so the isolation property cannot be dropped silently.
+    assert '--name "$pod" --network none --share net "$pod_hosts_flag"' in text
+    assert 'pod_hosts_flag="--hosts-file=none"' in text
+    assert 'pod_hosts_flag="--no-hosts"' in text
+    assert "podman pod create supports neither --hosts-file nor --no-hosts" in text
     assert "--cpus=2 --memory=2g" in text
     assert text.count('--pod "$pod"') == 2
     assert "same-pod-namespace-proof" in text
