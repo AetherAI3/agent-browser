@@ -22,7 +22,7 @@ asset and is not runtime proof.
 | Capture operator | Automated `release-evidence` workflow on a GitHub-hosted `ubuntu-24.04` runner; no interactive operator step |
 | `assets/demo.mp4` SHA-256 | `68cff191b83c87e3b150f3364fd4e3900a35ff4541410d753b5884ec3befd952` |
 | `assets/demo-poster.png` SHA-256 | `8ad2d324c104bf6c62b6a1d209340395bb4d0a1b24367e4f91bc5964a79c6b79` |
-| `assets/social-preview.png` and Pages-copy SHA-256 and dimensions | `0f64035ad398ed7d2c0006c931d5c11ab63481bc686ebc022973cce85eb82e5c`; 1280x640; `docs/assets/social-preview.png` is byte-identical |
+| `assets/social-preview.png` and Pages-copy SHA-256 and dimensions | `e3473f97af387d28bed32e8959873b79175ccc305e17dfa7aa310ef1e9329556`; 1280x640; `docs/assets/social-preview.png` is byte-identical |
 
 ## How the media was produced
 
@@ -75,10 +75,10 @@ click returns.
 ## Social-preview provenance
 
 The committed logo is `assets/agent-browser-logo.png`, SHA-256
-`fd715919bb45791c432d19e1fc82cf6d8c6cb9fdc89051b19202f3dc8f04f7dc`. It is rebuilt from the
+`bb3a63b2a54e3a48dbdc77605f3511d5211ae5b695bac831ca689c7bc593b4e2`. It is rebuilt from the
 owner-supplied artwork, which had previously been committed as a JPEG carrying a transparency
 checkerboard and a dashed border painted into its pixels rather than a real alpha channel. The
-committed PNG is 848x904, has a genuine alpha channel, drops the painted border, and uses a
+committed PNG is 424x452, has a genuine alpha channel, drops the painted border, and uses a
 64-colour palette so that JPEG ringing no longer blurs the pixel-art edges.
 
 `assets/social-preview.png` is a generated 1280x640 brand card, not a screenshot and not runtime
