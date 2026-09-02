@@ -103,6 +103,9 @@ class FakePage:
         self.calls.append(("close",))
         self.closed = True
 
+    async def bring_to_front(self) -> None:
+        self.calls.append(("bring-to-front",))
+
 
 class FakeDownload:
     def __init__(self) -> None:
@@ -248,6 +251,19 @@ async def test_downloads_are_cancelled_and_extra_pages_are_closed() -> None:
 
     assert download.cancelled
     assert popup.closed
+    assert ("bring-to-front",) in _page.calls
+
+
+@pytest.mark.asyncio
+async def test_click_waits_for_popup_denial_and_restores_primary_page() -> None:
+    adapter, page = launched_adapter()
+    popup = FakeExtraPage()
+    adapter._handle_new_page_event(popup)
+
+    await adapter.click(selector="#submit")
+
+    assert popup.closed
+    assert page.calls[-1] == ("bring-to-front",)
 
 
 @pytest.mark.asyncio

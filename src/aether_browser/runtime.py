@@ -495,6 +495,14 @@ class PatchrightBrowserAdapter:
                 else:
                     click_x, click_y = self._coordinates(x, y)
                     await page.mouse.click(click_x, click_y)
+                # A click can synchronously create a popup or start a download.
+                # Do not report the interaction as complete until those denial
+                # hooks have settled and the owned page is foreground again.
+                await asyncio.sleep(0)
+                await self.drain_boundary_events()
+                if not self.is_ready:
+                    raise BrowserNotReadyError("The browser is not ready.")
+                await page.bring_to_front()
         except BaseException as error:
             self._raise_operation_error(error, "Click failed.")
 
@@ -776,6 +784,9 @@ class PatchrightBrowserAdapter:
         try:
             async with asyncio.timeout(self._cleanup_timeout):
                 await page.close()
+                primary_page = self._page
+                if primary_page is not None and not primary_page.is_closed():
+                    await primary_page.bring_to_front()
         except asyncio.CancelledError:
             raise
         except Exception:
