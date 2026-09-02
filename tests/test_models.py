@@ -4,8 +4,8 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from aether_browser import __version__
-from aether_browser.models import (
+from agent_browser import __version__
+from agent_browser.models import (
     API_VERSION,
     AllowedKey,
     CreateSessionRequest,

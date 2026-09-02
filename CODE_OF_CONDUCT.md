@@ -2,7 +2,7 @@
 
 ## Our commitment
 
-We are committed to making participation in Aether Browser respectful and harassment-free for
+We are committed to making participation in Agent Browser respectful and harassment-free for
 everyone, regardless of age, body size, disability, ethnicity, sex characteristics, gender
 identity and expression, experience level, education, socioeconomic status, nationality,
 personal appearance, race, caste, color, religion, or sexual identity and orientation.

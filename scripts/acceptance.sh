@@ -41,9 +41,9 @@ fi
 
 run_key="${GITHUB_RUN_ID:-local}-$$"
 run_key="${run_key//[^A-Za-z0-9_.-]/-}"
-pod="aether-browser-acceptance-${run_key}"
-browser="aether-browser-api-${run_key}"
-fixture="aether-browser-fixture-${run_key}"
+pod="agent-browser-acceptance-${run_key}"
+browser="agent-browser-api-${run_key}"
+fixture="agent-browser-fixture-${run_key}"
 work_dir="$(mktemp -d)"
 api_port="${AETHER_ACCEPTANCE_API_PORT:-18092}"
 novnc_port="${AETHER_ACCEPTANCE_NOVNC_PORT:-16080}"
@@ -85,7 +85,7 @@ case "${expected_sha}${image_hash}" in
     exit 1
     ;;
 esac
-image_tag="localhost/aether-browser:${expected_sha}"
+image_tag="localhost/agent-browser:${expected_sha}"
 actual_image_id="$(
   "${podman_cli[@]}" image inspect "$image_tag" --format '{{.Id}}' 2>/dev/null || true
 )"
@@ -177,21 +177,21 @@ pod_created=true
   --read-only --cap-drop=all --security-opt=no-new-privileges --pids-limit=512 \
   --memory=2g --cpus=2 --shm-size=1g \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=1g \
-  --tmpfs /home/aether/.cache:rw,noexec,nosuid,nodev,size=256m \
-  -e AETHER_BROWSER_API_BIND=127.0.0.1 \
-  -e AETHER_BROWSER_API_HOST=127.0.0.1 \
-  -e "AETHER_BROWSER_API_PORT=$api_port" \
-  -e AETHER_BROWSER_CONTAINER_MODE=1 \
-  -e AETHER_BROWSER_NOVNC_BIND=127.0.0.1 \
-  -e AETHER_BROWSER_NOVNC_HOST=127.0.0.1 \
-  -e "AETHER_BROWSER_NOVNC_PORT=$novnc_port" \
-  -e "AETHER_BROWSER_VIEW_URL=http://127.0.0.1:${novnc_port}/vnc.html" \
-  -e AETHER_BROWSER_REMOTE_MODE=0 \
-  -e AETHER_BROWSER_REVERSE_PROXY_EXPOSED=0 \
-  -e AETHER_BROWSER_TEST_MODE=1 \
-  -e "AETHER_BROWSER_TEST_ORIGINS=http://127.0.0.1:${fixture_port}" \
-  -e "AETHER_BROWSER_CONTROLLER_TOKEN=$controller_token" \
-  -e "AETHER_BROWSER_OBSERVER_TOKEN=$observer_token" \
+  --tmpfs /home/agent/.cache:rw,noexec,nosuid,nodev,size=256m \
+  -e AGENT_BROWSER_API_BIND=127.0.0.1 \
+  -e AGENT_BROWSER_API_HOST=127.0.0.1 \
+  -e "AGENT_BROWSER_API_PORT=$api_port" \
+  -e AGENT_BROWSER_CONTAINER_MODE=1 \
+  -e AGENT_BROWSER_NOVNC_BIND=127.0.0.1 \
+  -e AGENT_BROWSER_NOVNC_HOST=127.0.0.1 \
+  -e "AGENT_BROWSER_NOVNC_PORT=$novnc_port" \
+  -e "AGENT_BROWSER_VIEW_URL=http://127.0.0.1:${novnc_port}/vnc.html" \
+  -e AGENT_BROWSER_REMOTE_MODE=0 \
+  -e AGENT_BROWSER_REVERSE_PROXY_EXPOSED=0 \
+  -e AGENT_BROWSER_TEST_MODE=1 \
+  -e "AGENT_BROWSER_TEST_ORIGINS=http://127.0.0.1:${fixture_port}" \
+  -e "AGENT_BROWSER_CONTROLLER_TOKEN=$controller_token" \
+  -e "AGENT_BROWSER_OBSERVER_TOKEN=$observer_token" \
   --pull=never --http-proxy=false "$expected_image_id" >/dev/null
 
 api_base="http://127.0.0.1:${api_port}"
@@ -430,7 +430,7 @@ PY
 
 download_path="$(
   "${podman_cli[@]}" exec "$browser" \
-    find /tmp /home/aether -type f -name blocked.txt -print -quit
+    find /tmp /home/agent -type f -name blocked.txt -print -quit
 )"
 if [ -n "$download_path" ]; then
   echo '{"result":"FAIL","reason":"a refused download persisted in browser-writable storage"}'
@@ -556,7 +556,7 @@ if "${podman_cli[@]}" exec "$browser" \
   exit 1
 fi
 if "${podman_cli[@]}" exec "$browser" \
-  sh -c "find /tmp -maxdepth 1 -type d -name 'aether-browser-*' -print -quit | grep -q ."; then
+  sh -c "find /tmp -maxdepth 1 -type d -name 'agent-browser-*' -print -quit | grep -q ."; then
   echo '{"result":"FAIL","reason":"temporary browser profile survived session end"}'
   exit 1
 fi

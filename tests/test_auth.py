@@ -7,7 +7,7 @@ from collections.abc import Callable
 import pytest
 from fastapi import HTTPException
 
-from aether_browser.auth import (
+from agent_browser.auth import (
     AuthConfigurationError,
     AuthenticationRequired,
     AuthError,
@@ -281,7 +281,7 @@ def test_authorization_always_uses_two_fixed_size_constant_time_comparisons(
         calls.append((left, right))
         return original(left, right)
 
-    monkeypatch.setattr("aether_browser.auth.hmac.compare_digest", recording_compare)
+    monkeypatch.setattr("agent_browser.auth.hmac.compare_digest", recording_compare)
     authorize(settings, f"Bearer {OBSERVER_CANARY}", Authority.OBSERVER)
     assert len(calls) == 2
     assert all(len(left) == len(right) == 32 for left, right in calls)

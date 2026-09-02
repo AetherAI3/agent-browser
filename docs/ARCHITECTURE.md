@@ -1,6 +1,6 @@
-# Aether Browser v0.1 architecture contract
+# Agent Browser v0.1 architecture contract
 
-Aether Browser is one headed Chrome session with two interfaces to the same runtime: a small HTTP API for agent control and loopback-only noVNC for human observation or takeover.
+Agent Browser is one headed Chrome session with two interfaces to the same runtime: a small HTTP API for agent control and loopback-only noVNC for human observation or takeover.
 
 ```text
 remote API client ──HTTPS──> trusted same-host TLS proxy
@@ -33,7 +33,7 @@ The session ID remains explicit in every session-scoped payload so a future mult
 - API default: `127.0.0.1:8092`.
 - noVNC default: `127.0.0.1:6080`.
 - Actual API and noVNC listeners accept numeric loopback literals only.
-- The container invokes `python -m aether_browser.main`; that validated module launcher owns the
+- The container invokes `python -m agent_browser.main`; that validated module launcher owns the
   Uvicorn bind, and raw Uvicorn CLI overrides are outside the transport contract.
 - Direct non-loopback API binding is rejected even when bearer tokens are configured.
 - Authenticated remote API use requires explicit remote and reverse-proxy modes, a non-loopback
@@ -42,7 +42,7 @@ The session ID remains explicit in every session-scoped payload so a future mult
 - The raw proxy peer and Host authority are validated. Uvicorn proxy-header parsing is disabled,
   and forwarding headers are rejected instead of becoming authority inputs.
 - noVNC remains unauthenticated, literal loopback-only, and outside the remote proxy surface in
-  v0.1. The container entrypoint rejects every `AETHER_BROWSER_NOVNC_BIND` value except
+  v0.1. The container entrypoint rejects every `AGENT_BROWSER_NOVNC_BIND` value except
   `127.0.0.1`; its implementation-only raw VNC socket is fixed to `127.0.0.1:5900`.
 - Test-only local origins require explicit test mode and an exact allowlist; production defaults never enable that exception.
 

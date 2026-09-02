@@ -1,5 +1,5 @@
 [Unit]
-Description=Aether Browser CI resource boundary
+Description=Agent Browser CI resource boundary
 
 [Slice]
 CPUAccounting=yes

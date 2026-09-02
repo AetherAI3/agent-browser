@@ -1,8 +1,8 @@
 # Browser runner and hosted-release qualification
 
-This directory is a reviewed template, not proof that a host was provisioned. A runner may receive `aetherbrowser-ci` only after live capacity measurement and the exact staging smoke pass.
+This directory is a reviewed template, not proof that a host was provisioned. A runner may receive `agent-browser-ci` only after live capacity measurement and the exact staging smoke pass.
 
-Required identity: repository-scoped worker `aether-vps6-browser-01`, service account `aether-ci-browser01`, baseline labels `self-hosted`, `linux`, `x64`, `vps6-ci` when true, `aetherbrowser-staging`, and its unique identity. The capability label is added—not substituted—only after smoke evidence is green.
+Required identity: repository-scoped worker `aether-vps6-browser-01`, service account `aether-ci-browser01`, baseline labels `self-hosted`, `linux`, `x64`, `vps6-ci` when true, `agent-browser-staging`, and its unique identity. The capability label is added—not substituted—only after smoke evidence is green.
 
 The service account must have no interactive shell, sudo, supplementary groups, Docker group, shared home, operator access, production environment access, SSH keys, Tailscale control socket, or host container socket. Registration consumes a one-time repository token through a non-logged channel; no token or PAT is stored in this repository or in command transcripts.
 
@@ -15,8 +15,8 @@ Pull-request code runs only in `.github/workflows/ci.yml` on the fixed GitHub-ho
 `.github/workflows/trusted-runner.yml` is the exact-main release-evidence workflow. It runs every workload job on a fresh, fixed `ubuntu-24.04` runner. A proof job first checks the default branch, `refs/heads/main`, the event SHA, and a fresh checkout; every later job checks out only that proved SHA and verifies `HEAD`. The container job starts a private rootless Podman API below `RUNNER_TEMP`, builds one immutable image, and performs SBOM, vulnerability, acceptance, and capture work in the same ephemeral VM. Independent hosted jobs validate the acceptance artifact and reproduce the documented Docker Compose quickstart. Direct pushes to `main` remain an administrative trust path and must be disabled by repository rules.
 
 The manual `.github/workflows/runner-smoke.yml` workflow targets only the exact
-`aether-vps6-browser-01` identity carrying `vps6-ci` and `aetherbrowser-staging`. It remains a
-future dedicated-runner qualification path, not a release dependency. Grant `aetherbrowser-ci`
+`aether-vps6-browser-01` identity carrying `vps6-ci` and `agent-browser-staging`. It remains a
+future dedicated-runner qualification path, not a release dependency. Grant `agent-browser-ci`
 only after uploaded smoke evidence for the exact reviewed commit is green. Never place either
 Browser label on a runner shared with another repository.
 

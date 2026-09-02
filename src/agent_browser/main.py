@@ -1,4 +1,4 @@
-"""FastAPI entrypoint for the closed Aether Browser v1 API."""
+"""FastAPI entrypoint for the closed Agent Browser v1 API."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from aether_browser.models import (
+from agent_browser.models import (
     CreateSessionRequest,
     CreateSessionResponse,
     EndSessionRequest,
@@ -40,7 +40,7 @@ from aether_browser.models import (
     SnapshotRequest,
     SnapshotResponse,
 )
-from aether_browser.runtime import (
+from agent_browser.runtime import (
     BrowserLaunchError,
     BrowserNotReadyError,
     BrowserOperationError,
@@ -49,7 +49,7 @@ from aether_browser.runtime import (
     NavigationGuard,
     PatchrightBrowserAdapter,
 )
-from aether_browser.sessions import (
+from agent_browser.sessions import (
     AdapterFactory,
     SessionCapacityError,
     SessionError,
@@ -92,41 +92,41 @@ class RuntimeSettings:
 
     @classmethod
     def from_environment(cls) -> RuntimeSettings:
-        api_host = os.getenv("AETHER_BROWSER_API_HOST", "127.0.0.1")
-        novnc_host = os.getenv("AETHER_BROWSER_NOVNC_HOST", "127.0.0.1")
+        api_host = os.getenv("AGENT_BROWSER_API_HOST", "127.0.0.1")
+        novnc_host = os.getenv("AGENT_BROWSER_NOVNC_HOST", "127.0.0.1")
         settings = cls(
-            api_bind=os.getenv("AETHER_BROWSER_API_BIND", "127.0.0.1"),
+            api_bind=os.getenv("AGENT_BROWSER_API_BIND", "127.0.0.1"),
             api_host=api_host,
-            api_port=_bounded_int(os.getenv("AETHER_BROWSER_API_PORT"), 8092, 1, 65_535),
-            novnc_bind=os.getenv("AETHER_BROWSER_NOVNC_BIND", "127.0.0.1"),
+            api_port=_bounded_int(os.getenv("AGENT_BROWSER_API_PORT"), 8092, 1, 65_535),
+            novnc_bind=os.getenv("AGENT_BROWSER_NOVNC_BIND", "127.0.0.1"),
             novnc_host=novnc_host,
-            container_mode=_environment_flag("AETHER_BROWSER_CONTAINER_MODE"),
-            remote_mode=_environment_flag("AETHER_BROWSER_REMOTE_MODE"),
-            reverse_proxy_exposed=_environment_flag("AETHER_BROWSER_REVERSE_PROXY_EXPOSED"),
-            trusted_proxy_cidr=os.getenv("AETHER_BROWSER_TRUSTED_PROXY_CIDR"),
-            trusted_proxy_scheme=os.getenv("AETHER_BROWSER_TRUSTED_PROXY_SCHEME"),
-            test_mode=_environment_flag("AETHER_BROWSER_TEST_MODE"),
+            container_mode=_environment_flag("AGENT_BROWSER_CONTAINER_MODE"),
+            remote_mode=_environment_flag("AGENT_BROWSER_REMOTE_MODE"),
+            reverse_proxy_exposed=_environment_flag("AGENT_BROWSER_REVERSE_PROXY_EXPOSED"),
+            trusted_proxy_cidr=os.getenv("AGENT_BROWSER_TRUSTED_PROXY_CIDR"),
+            trusted_proxy_scheme=os.getenv("AGENT_BROWSER_TRUSTED_PROXY_SCHEME"),
+            test_mode=_environment_flag("AGENT_BROWSER_TEST_MODE"),
             test_origins=tuple(
                 origin.strip()
-                for origin in os.getenv("AETHER_BROWSER_TEST_ORIGINS", "").split(",")
+                for origin in os.getenv("AGENT_BROWSER_TEST_ORIGINS", "").split(",")
                 if origin.strip()
             ),
-            observer_token=os.getenv("AETHER_BROWSER_OBSERVER_TOKEN"),
-            controller_token=os.getenv("AETHER_BROWSER_CONTROLLER_TOKEN"),
+            observer_token=os.getenv("AGENT_BROWSER_OBSERVER_TOKEN"),
+            controller_token=os.getenv("AGENT_BROWSER_CONTROLLER_TOKEN"),
             idle_timeout_seconds=_bounded_float(
-                os.getenv("AETHER_BROWSER_IDLE_TIMEOUT_SECONDS"),
+                os.getenv("AGENT_BROWSER_IDLE_TIMEOUT_SECONDS"),
                 300.0,
                 1.0,
                 86_400.0,
             ),
             absolute_lifetime_seconds=_bounded_float(
-                os.getenv("AETHER_BROWSER_ABSOLUTE_LIFETIME_SECONDS"),
+                os.getenv("AGENT_BROWSER_ABSOLUTE_LIFETIME_SECONDS"),
                 3600.0,
                 1.0,
                 86_400.0,
             ),
             view_url=os.getenv(
-                "AETHER_BROWSER_VIEW_URL",
+                "AGENT_BROWSER_VIEW_URL",
                 "http://127.0.0.1:6080/vnc.html",
             ),
         )
@@ -307,7 +307,7 @@ class _LazySecurity:
         if self._auth_settings is not None:
             return
         try:
-            auth_module = importlib.import_module("aether_browser.auth")
+            auth_module = importlib.import_module("agent_browser.auth")
         except ImportError:
             raise BrowserNotReadyError("The authority boundary is unavailable.") from None
         auth_settings = auth_module.build_auth_settings(
@@ -335,7 +335,7 @@ class _LazySecurity:
         if auth_settings is None:
             raise BrowserNotReadyError("The authority boundary is unavailable.")
         try:
-            policy_module = importlib.import_module("aether_browser.policy")
+            policy_module = importlib.import_module("agent_browser.policy")
         except ImportError:
             raise BrowserNotReadyError("The navigation boundary is unavailable.") from None
         self._policy = policy_module.NavigationPolicy(
@@ -410,7 +410,7 @@ def create_app(
             await session_manager.shutdown()
 
     application = FastAPI(
-        title="Aether Browser",
+        title="Agent Browser",
         version="0.1.0",
         docs_url=None,
         redoc_url=None,

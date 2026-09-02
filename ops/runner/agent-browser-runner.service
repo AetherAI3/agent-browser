@@ -1,5 +1,5 @@
 [Unit]
-Description=Aether Browser repository-scoped Actions runner
+Description=Agent Browser repository-scoped Actions runner
 After=network-online.target
 Wants=network-online.target
 
@@ -13,7 +13,7 @@ KillMode=control-group
 Restart=always
 RestartSec=10s
 TimeoutStopSec=45s
-Slice=aether-browser-ci.slice
+Slice=agent-browser-ci.slice
 MemoryHigh=6G
 MemoryMax=8G
 CPUQuota=200%

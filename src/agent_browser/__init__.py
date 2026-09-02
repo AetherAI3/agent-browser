@@ -1,4 +1,4 @@
-"""Aether Browser public package contract."""
+"""Agent Browser public package contract."""
 
 from typing import Final
 

@@ -1,6 +1,6 @@
 # Third-party notices
 
-Aether Browser's own source is licensed under Apache-2.0. This file identifies directly declared
+Agent Browser's own source is licensed under Apache-2.0. This file identifies directly declared
 runtime and build/validation Python dependencies plus directly installed container components. It
 is an attribution aid, not legal advice, and it does not replace the license text shipped by each
 dependency.
@@ -35,7 +35,7 @@ dependency above them.
 
 ## Direct build and validation Python dependencies
 
-The current Dockerfile installs the full `requirements.lock` before installing Aether Browser, so
+The current Dockerfile installs the full `requirements.lock` before installing Agent Browser, so
 the following directly declared tools are present in the candidate image even though they are not
 runtime API dependencies. Their versions are pinned by `requirements.in`, `pyproject.toml`, and the
 hash-locked environment:

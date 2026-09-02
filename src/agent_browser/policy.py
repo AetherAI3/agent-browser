@@ -1,4 +1,4 @@
-"""SSRF-resistant top-level navigation policy for Aether Browser."""
+"""SSRF-resistant top-level navigation policy for Agent Browser."""
 
 from __future__ import annotations
 

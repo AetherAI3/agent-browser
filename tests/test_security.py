@@ -10,8 +10,8 @@ import pytest
 from fastapi import FastAPI
 from fixtures.runtime_fakes import FakeAdapter, FakeAdapterFactory
 
-import aether_browser.main as main_module
-from aether_browser.auth import (
+import agent_browser.main as main_module
+from agent_browser.auth import (
     AuthConfigurationError,
     Authority,
     AuthorityForbidden,
@@ -19,15 +19,15 @@ from aether_browser.auth import (
     authorize,
     build_auth_settings,
 )
-from aether_browser.main import RequiredAuthority, RuntimeSettings, create_app, run
-from aether_browser.policy import (
+from agent_browser.main import RequiredAuthority, RuntimeSettings, create_app, run
+from agent_browser.policy import (
     NavigationPolicy,
     PolicyConfigurationError,
     PolicyError,
     PolicyReason,
 )
-from aether_browser.runtime import NavigationGuard
-from aether_browser.sessions import SessionManager
+from agent_browser.runtime import NavigationGuard
+from agent_browser.sessions import SessionManager
 
 OBSERVER_CANARY = "Observer-Security-Canary-0123456789!Alpha"
 CONTROLLER_CANARY = "Controller-Security-Canary-9876543210!Beta"
@@ -487,14 +487,14 @@ async def test_proxy_rejects_every_forwarding_header(
 
 
 def test_environment_loads_complete_proxy_tuple(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("AETHER_BROWSER_API_BIND", "127.0.0.1")
-    monkeypatch.setenv("AETHER_BROWSER_API_HOST", "browser.example")
-    monkeypatch.setenv("AETHER_BROWSER_REMOTE_MODE", "1")
-    monkeypatch.setenv("AETHER_BROWSER_REVERSE_PROXY_EXPOSED", "1")
-    monkeypatch.setenv("AETHER_BROWSER_TRUSTED_PROXY_CIDR", "127.0.0.1/32")
-    monkeypatch.setenv("AETHER_BROWSER_TRUSTED_PROXY_SCHEME", "https")
-    monkeypatch.setenv("AETHER_BROWSER_OBSERVER_TOKEN", OBSERVER_CANARY)
-    monkeypatch.setenv("AETHER_BROWSER_CONTROLLER_TOKEN", CONTROLLER_CANARY)
+    monkeypatch.setenv("AGENT_BROWSER_API_BIND", "127.0.0.1")
+    monkeypatch.setenv("AGENT_BROWSER_API_HOST", "browser.example")
+    monkeypatch.setenv("AGENT_BROWSER_REMOTE_MODE", "1")
+    monkeypatch.setenv("AGENT_BROWSER_REVERSE_PROXY_EXPOSED", "1")
+    monkeypatch.setenv("AGENT_BROWSER_TRUSTED_PROXY_CIDR", "127.0.0.1/32")
+    monkeypatch.setenv("AGENT_BROWSER_TRUSTED_PROXY_SCHEME", "https")
+    monkeypatch.setenv("AGENT_BROWSER_OBSERVER_TOKEN", OBSERVER_CANARY)
+    monkeypatch.setenv("AGENT_BROWSER_CONTROLLER_TOKEN", CONTROLLER_CANARY)
 
     settings = RuntimeSettings.from_environment()
 
@@ -511,7 +511,7 @@ def test_run_disables_uvicorn_proxy_header_trust(monkeypatch: pytest.MonkeyPatch
         classmethod(lambda _cls: RuntimeSettings()),
     )
     monkeypatch.setattr(
-        "aether_browser.main.uvicorn.run",
+        "agent_browser.main.uvicorn.run",
         lambda *args, **kwargs: captured.update({"args": args, **kwargs}),
     )
 
@@ -544,7 +544,7 @@ async def test_default_adapter_receives_stateful_dns_and_redirect_guards(
         answers = resolver_answers[hostname]
         return answers[min(call_index, len(answers) - 1)]
 
-    monkeypatch.setattr("aether_browser.policy._system_resolver", resolver)
+    monkeypatch.setattr("agent_browser.policy._system_resolver", resolver)
     captured: list[FakeAdapter] = []
     injected_calls: list[str] = []
 
@@ -563,7 +563,7 @@ async def test_default_adapter_receives_stateful_dns_and_redirect_guards(
             self.redirect_guard = redirect_guard
             captured.append(self)
 
-    monkeypatch.setattr("aether_browser.main.PatchrightBrowserAdapter", CapturingAdapter)
+    monkeypatch.setattr("agent_browser.main.PatchrightBrowserAdapter", CapturingAdapter)
     application = create_app(
         settings=RuntimeSettings(),
         navigation_policy=injected_policy,

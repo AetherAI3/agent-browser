@@ -14,9 +14,9 @@ from urllib.parse import urlsplit
 
 import pytest
 
-from aether_browser.models import MAX_ACCESSIBILITY_NODES, MAX_READABLE_TEXT_CHARS
-from aether_browser.policy import NavigationPolicy, PolicyError
-from aether_browser.runtime import (
+from agent_browser.models import MAX_ACCESSIBILITY_NODES, MAX_READABLE_TEXT_CHARS
+from agent_browser.policy import NavigationPolicy, PolicyError
+from agent_browser.runtime import (
     BrowserDestinationBlockedError,
     BrowserOperationError,
     InvalidBrowserInteractionError,
@@ -542,7 +542,7 @@ async def test_launch_installs_pinned_socks_only_configuration(
     operations: list[str] = []
     captured: dict[str, Any] = {}
     monkeypatch.setenv("DISPLAY", ":99")
-    monkeypatch.setenv("AETHER_BROWSER_CONTROLLER_TOKEN", "must-not-reach-chrome")
+    monkeypatch.setenv("AGENT_BROWSER_CONTROLLER_TOKEN", "must-not-reach-chrome")
 
     class LaunchPage(FakePage):
         def on(self, _name: str, _handler: object) -> None:

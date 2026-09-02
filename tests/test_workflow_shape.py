@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = ROOT / ".github" / "workflows"
 GITHUB_HOSTED_RUNNER = "ubuntu-24.04"
-STAGING_RUNNER = "[self-hosted, linux, x64, vps6-ci, aetherbrowser-staging, aether-vps6-browser-01]"
+STAGING_RUNNER = "[self-hosted, linux, x64, vps6-ci, agent-browser-staging, aether-vps6-browser-01]"
 
 
 def _workflow_paths() -> tuple[Path, ...]:
@@ -82,8 +82,8 @@ def test_bounded_ci_is_github_hosted_for_every_job() -> None:
     assert set(_runs_on_values(text)) == {GITHUB_HOSTED_RUNNER}
     for job in ("change-map", "quality", "unit", "security"):
         assert f"  {job}:\n" in text
-    assert "aetherbrowser-ci" not in text
-    assert "aetherbrowser-staging" not in text
+    assert "agent-browser-ci" not in text
+    assert "agent-browser-staging" not in text
 
 
 def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() -> None:
@@ -96,8 +96,8 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     assert set(_runs_on_values(text)) == {GITHUB_HOSTED_RUNNER}
     assert text.count(f"runs-on: {GITHUB_HOSTED_RUNNER}") == 5
     assert "self-hosted" not in text
-    assert "aetherbrowser-ci" not in text
-    assert "aetherbrowser-staging" not in text
+    assert "agent-browser-ci" not in text
+    assert "agent-browser-staging" not in text
     assert "      expected_sha:\n" in text
     assert 'test "$EVENT_REF" = "refs/heads/main"' in text
     assert 'test "$EXPECTED_SHA" = "$EVENT_SHA"' in text
@@ -108,7 +108,7 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     assert "image_id: ${{ steps.image_proof.outputs.image_id }}" in text
     assert (
         'image_id="$(podman --remote image inspect '
-        "aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"" in text
+        "agent-browser:${GITHUB_SHA} --format '{{.Id}}')\"" in text
     )
     assert "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}" in text
     assert text.count("bash scripts/acceptance.sh") == 1
@@ -130,13 +130,13 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
 def test_container_browser_launcher_and_scan_advisory_are_narrowly_bound() -> None:
     dockerfile = _read(ROOT / "Dockerfile")
     entrypoint = _read(ROOT / "scripts" / "container-entrypoint.sh")
-    runtime = _read(ROOT / "src" / "aether_browser" / "runtime.py")
+    runtime = _read(ROOT / "src" / "agent_browser" / "runtime.py")
     x11vnc_command = "x11vnc -display :99 -listen 127.0.0.1 -no6 -noipv6"
 
-    assert entrypoint.count("python -m aether_browser.main &") == 1
+    assert entrypoint.count("python -m agent_browser.main &") == 1
     assert entrypoint.count(x11vnc_command) == 1
     assert entrypoint.count("-rfbport 5900 -rfbportv6 -1 -httpportv6 -1") == 1
-    assert "aether_browser.main:app" not in entrypoint
+    assert "agent_browser.main:app" not in entrypoint
     assert "python -m uvicorn" not in entrypoint
     assert "python -m patchright install --with-deps chrome" in dockerfile
     assert "python -m patchright install --with-deps chromium" not in dockerfile
@@ -168,7 +168,7 @@ def test_staging_smoke_is_manual_exact_main_only() -> None:
 
     assert _trigger_names(text) == {"workflow_dispatch"}
     assert text.count(f"runs-on: {STAGING_RUNNER}") == 1
-    assert "aetherbrowser-ci" not in text
+    assert "agent-browser-ci" not in text
     assert "      expected_sha:\n" in text
     assert 'test "$EVENT_REF" = "refs/heads/main"' in text
     assert 'test "$EXPECTED_SHA" = "$EVENT_SHA"' in text
@@ -222,7 +222,7 @@ def test_container_build_context_is_a_runtime_allowlist_without_git_metadata() -
 
 
 def test_runner_temp_storage_is_private_and_cgroup_bounded() -> None:
-    text = _read(ROOT / "ops" / "runner" / "aether-browser-runner.service")
+    text = _read(ROOT / "ops" / "runner" / "agent-browser-runner.service")
 
     assert "PrivateTmp=yes" not in text
     assert "MemoryMax=8G" in text
@@ -271,7 +271,7 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     assert 'headers={"Authorization": f"Bearer {sys.argv[4]}"}' in text
     assert 'socket.create_connection(("127.0.0.1", 5900), timeout=1)' in text
     assert '"vnc-rfb-readiness"' in text
-    assert "find /tmp /home/aether -type f -name blocked.txt -print -quit" in text
+    assert "find /tmp /home/agent -type f -name blocked.txt -print -quit" in text
     assert '"download-non-persistence"' in text
     assert '"isolated-pod-network-none"' in text
     assert '"in-namespace-http-driver"' in text

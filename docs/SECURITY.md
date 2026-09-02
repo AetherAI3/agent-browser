@@ -1,4 +1,4 @@
-# Aether Browser v0.1 security model
+# Agent Browser v0.1 security model
 
 This document describes the implemented v0.1 boundary and the assumptions a deployer must keep
 true. It is not a certification or a claim that the software has no vulnerabilities.
@@ -11,7 +11,7 @@ redirects, page scripts, selectors, and interaction payloads are untrusted.
 
 The local operator, host administrator, container engine, exact application image, and processes
 that can reach host loopback are trusted. In authenticated proxy mode, the separately managed
-same-host TLS proxy is also trusted. Aether Browser does not create a secure boundary against a
+same-host TLS proxy is also trusted. Agent Browser does not create a secure boundary against a
 host administrator or a compromised container engine.
 
 ## Listener and authority boundary
@@ -39,7 +39,7 @@ headers are rejected rather than interpreted, the raw peer must match one exact 
 and Host authority must match the configured external host.
 
 The proxy must strip forwarding headers, reject unexpected authority, keep the backend socket
-private, and never route noVNC. Aether Browser does not ship or configure that TLS proxy.
+private, and never route noVNC. Agent Browser does not ship or configure that TLS proxy.
 
 ## Navigation and egress
 

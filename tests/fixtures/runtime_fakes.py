@@ -8,8 +8,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from aether_browser.models import AccessibilityNode, AccessibilitySnapshot, Viewport
-from aether_browser.runtime import BrowserPageState, BrowserSnapshot
+from agent_browser.models import AccessibilityNode, AccessibilitySnapshot, Viewport
+from agent_browser.runtime import BrowserPageState, BrowserSnapshot
 
 
 class FakeClock:

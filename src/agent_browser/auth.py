@@ -1,6 +1,6 @@
-"""Fail-closed authority checks for the Aether Browser API.
+"""Fail-closed authority checks for the Agent Browser API.
 
-The module deliberately has no dependency on :mod:`aether_browser.main`.  The
+The module deliberately has no dependency on :mod:`agent_browser.main`.  The
 pure ``authorize`` function can be called directly by a runtime adapter, while
 ``require_authority`` is a small FastAPI dependency factory.
 """

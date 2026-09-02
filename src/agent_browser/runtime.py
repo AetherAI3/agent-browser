@@ -1,4 +1,4 @@
-"""Async browser boundary for the Aether Browser runtime.
+"""Async browser boundary for the Agent Browser runtime.
 
 The public runtime deliberately exposes a small protocol instead of Patchright
 objects.  That keeps browser internals, profiles, downloads, script execution,
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, NoReturn, Protocol, cast
 from urllib.parse import urlsplit
 
-from aether_browser.egress import PinnedSocks5Proxy
-from aether_browser.models import (
+from agent_browser.egress import PinnedSocks5Proxy
+from agent_browser.models import (
     MAX_ACCESSIBILITY_NODES,
     MAX_READABLE_TEXT_CHARS,
     MAX_SCREENSHOT_BASE64_CHARS,
@@ -32,7 +32,7 @@ from aether_browser.models import (
 )
 
 if TYPE_CHECKING:
-    from aether_browser.policy import ConnectionPlan
+    from agent_browser.policy import ConnectionPlan
 
 DEFAULT_VIEWPORT_WIDTH = 1280
 DEFAULT_VIEWPORT_HEIGHT = 720
@@ -552,7 +552,7 @@ class PatchrightBrowserAdapter:
         self._ready = False
         cleanup_task = asyncio.create_task(
             self._close_owned_resources(),
-            name="aether-browser-adapter-cleanup",
+            name="agent-browser-adapter-cleanup",
         )
         try:
             cancellation = await _drain_owned_task(cleanup_task)

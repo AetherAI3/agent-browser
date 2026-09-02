@@ -1,4 +1,4 @@
-"""Closed, bounded API v1 models for the Aether Browser runtime."""
+"""Closed, bounded API v1 models for the Agent Browser runtime."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from pydantic import (
     model_validator,
 )
 
-from aether_browser import __version__
+from agent_browser import __version__
 
 API_VERSION: Literal["v1"] = "v1"
 DEFAULT_MAX_VISION_STEPS = 25

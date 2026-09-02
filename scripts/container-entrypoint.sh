@@ -2,13 +2,13 @@
 set -eu
 
 children=""
-novnc_bind="${AETHER_BROWSER_NOVNC_BIND:-127.0.0.1}"
-novnc_port="${AETHER_BROWSER_NOVNC_PORT:-6080}"
+novnc_bind="${AGENT_BROWSER_NOVNC_BIND:-127.0.0.1}"
+novnc_port="${AGENT_BROWSER_NOVNC_PORT:-6080}"
 
 # noVNC is intentionally unauthenticated in v0.1. Refuse every configurable
 # exposure wider than numeric IPv4 loopback instead of relying on port publishing.
 if [ "$novnc_bind" != "127.0.0.1" ]; then
-  echo "AETHER_BROWSER_NOVNC_BIND must be exactly 127.0.0.1 in v0.1" >&2
+  echo "AGENT_BROWSER_NOVNC_BIND must be exactly 127.0.0.1 in v0.1" >&2
   exit 1
 fi
 
@@ -43,7 +43,7 @@ children="$children $!"
 websockify --web=/usr/share/novnc "$novnc_bind:$novnc_port" 127.0.0.1:5900 &
 children="$children $!"
 
-python -m aether_browser.main &
+python -m agent_browser.main &
 api_pid=$!
 children="$children $api_pid"
 
