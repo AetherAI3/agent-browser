@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import inspect
+import logging
 import os
 import re
 from collections.abc import Awaitable, Callable
@@ -38,8 +39,58 @@ DEFAULT_ACTION_TIMEOUT_SECONDS = 15.0
 DEFAULT_NAVIGATION_TIMEOUT_SECONDS = 30.0
 DEFAULT_LAUNCH_TIMEOUT_SECONDS = 30.0
 DEFAULT_CLEANUP_TIMEOUT_SECONDS = 10.0
+LOGGER = logging.getLogger(__name__)
 
 NavigationGuard = Callable[[str], Awaitable[object] | object]
+
+
+def _browser_process_environment(profile_directory: Path) -> dict[str, str]:
+    """Build a minimal browser environment whose writable state dies with the profile."""
+
+    profile_directory.chmod(0o700)
+    cache_directory = profile_directory / ".cache"
+    config_directory = profile_directory / ".config"
+    data_parent = profile_directory / ".local"
+    data_directory = data_parent / "share"
+    runtime_directory = profile_directory / ".runtime"
+    temporary_directory = profile_directory / ".tmp"
+    for directory in (
+        cache_directory,
+        config_directory,
+        data_parent,
+        data_directory,
+        runtime_directory,
+        temporary_directory,
+    ):
+        directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        directory.chmod(0o700)
+
+    locale = os.environ.get("LC_ALL") or os.environ.get("LANG") or "C.UTF-8"
+    environment = {
+        "HOME": str(profile_directory),
+        "LANG": locale,
+        "LC_ALL": locale,
+        "PATH": os.environ.get("PATH", os.defpath),
+        "TEMP": str(temporary_directory),
+        "TMP": str(temporary_directory),
+        "TMPDIR": str(temporary_directory),
+        "XDG_CACHE_HOME": str(cache_directory),
+        "XDG_CONFIG_HOME": str(config_directory),
+        "XDG_DATA_HOME": str(data_directory),
+        "XDG_RUNTIME_DIR": str(runtime_directory),
+    }
+    for name in ("DISPLAY", "SYSTEMROOT", "WINDIR"):
+        value = os.environ.get(name)
+        if value:
+            environment[name] = value
+    if os.name == "nt":
+        environment["USERPROFILE"] = str(profile_directory)
+    return environment
+
+
+def _bounded_error_detail(error: BaseException) -> str:
+    detail = " ".join(str(error).split())
+    return detail[:2_000] or "no detail"
 
 
 class PinnedNetworkGuard(Protocol):
@@ -283,6 +334,7 @@ class PatchrightBrowserAdapter:
         guard = self._network_guard
         if guard is None:
             raise BrowserLaunchError("A pinned browser egress boundary is required.")
+        browser_environment = _browser_process_environment(profile_directory)
 
         try:
             from patchright.async_api import async_playwright
@@ -302,6 +354,7 @@ class PatchrightBrowserAdapter:
                         "height": self._viewport.height,
                     },
                     device_scale_factor=self._viewport.device_scale_factor,
+                    env=browser_environment,
                     service_workers="block",
                     timeout=int(self._launch_timeout * 1000),
                     proxy={"server": proxy_url, "bypass": ""},
@@ -340,6 +393,12 @@ class PatchrightBrowserAdapter:
                     self._browser.on("disconnected", self._handle_browser_disconnect)
                 self._ready = True
         except BaseException as error:
+            if not isinstance(error, asyncio.CancelledError):
+                LOGGER.error(
+                    "browser launch failed (%s): %s",
+                    type(error).__name__,
+                    _bounded_error_detail(error),
+                )
             await self.close()
             if isinstance(error, asyncio.CancelledError):
                 raise

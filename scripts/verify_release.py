@@ -509,6 +509,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         "--fail-on high --only-fixed --output json",
         "> artifacts/vulnerabilities.json",
         "> artifacts/browser-package.txt",
+        "/opt/google/chrome/chrome --version",
     )
     if any(fragment not in trusted_workflow for fragment in vulnerability_scan_contract):
         issues.append("trusted workflow weakens or omits exact-image vulnerability evidence")

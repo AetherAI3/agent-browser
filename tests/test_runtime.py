@@ -413,6 +413,7 @@ async def test_launch_installs_pinned_socks_only_configuration(
     operations: list[str] = []
     captured: dict[str, Any] = {}
     monkeypatch.setenv("DISPLAY", ":99")
+    monkeypatch.setenv("AETHER_BROWSER_CONTROLLER_TOKEN", "must-not-reach-chrome")
 
     class LaunchPage(FakePage):
         def on(self, _name: str, _handler: object) -> None:
@@ -488,6 +489,15 @@ async def test_launch_installs_pinned_socks_only_configuration(
         assert isinstance(proxy, dict)
         assert str(proxy["server"]).startswith("socks5://127.0.0.1:")
         assert proxy["bypass"] == ""
+        environment = captured["env"]
+        assert isinstance(environment, dict)
+        assert environment["DISPLAY"] == ":99"
+        assert environment["HOME"] == str(tmp_path)
+        assert environment["XDG_CONFIG_HOME"] == str(tmp_path / ".config")
+        assert environment["XDG_DATA_HOME"] == str(tmp_path / ".local" / "share")
+        assert environment["XDG_RUNTIME_DIR"] == str(tmp_path / ".runtime")
+        assert not any(name.startswith("AETHER_") for name in environment)
+        assert captured["channel"] == "chrome"
         args = set(captured["args"])
         assert "--proxy-bypass-list=<-loopback>" in args
         assert "--host-resolver-rules=MAP * ~NOTFOUND" in args
