@@ -103,7 +103,9 @@ nonce = secrets.token_hex(16)
 digest = hashlib.sha256(nonce.encode()).hexdigest()
 # Keep every color channel away from browser chrome's near-black/near-white palette.
 channels = [48 + (int(digest[index:index + 2], 16) % 160) for index in (0, 2, 4)]
-print(nonce, "".join(f"{channel:02x}" for channel in channels), secrets.token_urlsafe(32), secrets.token_urlsafe(32))
+controller = "Aa1!" + secrets.token_urlsafe(32)
+observer = "Aa1!" + secrets.token_urlsafe(32)
+print(nonce, "".join(f"{channel:02x}" for channel in channels), controller, observer)
 PY
 )
 
@@ -227,12 +229,17 @@ done
 ready=false
 for _ in $(seq 1 120); do
   if "${podman_cli[@]}" exec -i "$fixture" \
-    python - "$api_base" "$novnc_base" "$fixture_origin" <<'PY' >/dev/null 2>&1
+    python - "$api_base" "$novnc_base" "$fixture_origin" "$observer_token" \
+      <<'PY' >/dev/null 2>&1
 import json
 import sys
 import urllib.request
 
-with urllib.request.urlopen(sys.argv[1] + "/browser/health", timeout=1) as response:
+health_request = urllib.request.Request(
+    sys.argv[1] + "/browser/health",
+    headers={"Authorization": f"Bearer {sys.argv[4]}"},
+)
+with urllib.request.urlopen(health_request, timeout=1) as response:
     body = json.load(response)
 with urllib.request.urlopen(sys.argv[2] + "/vnc.html", timeout=1) as response:
     novnc_ready = response.status == 200
@@ -401,9 +408,20 @@ status, download = call(
     {"session_id": session_id, "action": "click", "target": {"selector": "#download"}},
     controller,
 )
-assert status in {400, 403}, (status, download)
+assert status in {200, 400, 403}, (status, download)
+if status == 200:
+    assert download["status"] == "interacted", download
 
 PY
+
+download_path="$(
+  "${podman_cli[@]}" exec "$browser" \
+    find /tmp /home/aether -type f -name blocked.txt -print -quit
+)"
+if [ -n "$download_path" ]; then
+  echo '{"result":"FAIL","reason":"a refused download persisted in browser-writable storage"}'
+  exit 1
+fi
 
 "${podman_cli[@]}" exec "$browser" scrot -o /tmp/display-proof.png
 "${podman_cli[@]}" exec "$fixture" base64 /tmp/api.png \
@@ -555,7 +573,7 @@ print(json.dumps({
         "health", "session-create", "capacity-rejection",
         "observer-refusal", "controller-success", "navigation", "snapshot", "click", "type",
         "press", "scroll", "second-snapshot", "direct-ssrf-refusal", "redirect-refusal",
-        "download-refusal", "popup-bounded", "novnc-web", "novnc-websocket",
+        "download-non-persistence", "popup-bounded", "novnc-web", "novnc-websocket",
         "loopback-listener-proof",
         "same-display-color-proof", "idempotent-end", "process-cleanup", "profile-cleanup",
         "pod-cleanup",
