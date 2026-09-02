@@ -805,9 +805,12 @@ class PatchrightBrowserAdapter:
     async def drain_boundary_events(self) -> None:
         """Wait for already-scheduled denial hooks; useful for deterministic tests."""
 
-        tasks = tuple(self._event_tasks)
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        cancellation: asyncio.CancelledError | None = None
+        while self._event_tasks:
+            tasks = asyncio.gather(*tuple(self._event_tasks), return_exceptions=True)
+            cancellation = await _drain_owned_task(tasks, cancellation)
+        if cancellation is not None:
+            raise cancellation
 
     def _require_page(self) -> Any:
         if not self.is_ready:

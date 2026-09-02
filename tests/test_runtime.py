@@ -6,6 +6,7 @@ import asyncio
 import base64
 import sys
 import types
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -34,6 +35,8 @@ class FakeLocator:
 
     async def click(self, *, timeout: int) -> None:
         self.page.calls.append(("selector-click", self.selector, timeout))
+        if self.page.click_hook is not None:
+            self.page.click_hook()
 
     async def fill(self, text: str, *, timeout: int) -> None:
         self.page.calls.append(("selector-fill", self.selector, text, timeout))
@@ -76,6 +79,7 @@ class FakePage:
     readable_text: str = "Readable"
     aria_text: str = '- heading "Example"\n- textbox "Search": empty'
     calls: list[tuple[object, ...]] = field(default_factory=list)
+    click_hook: Callable[[], None] | None = None
     closed: bool = False
     mouse: FakeMouse = field(init=False)
     keyboard: FakeKeyboard = field(init=False)
@@ -120,6 +124,18 @@ class FakeExtraPage:
         self.closed = False
 
     async def close(self) -> None:
+        self.closed = True
+
+
+class BlockingFakeExtraPage:
+    def __init__(self) -> None:
+        self.close_started = asyncio.Event()
+        self.allow_close = asyncio.Event()
+        self.closed = False
+
+    async def close(self) -> None:
+        self.close_started.set()
+        await self.allow_close.wait()
         self.closed = True
 
 
@@ -258,12 +274,32 @@ async def test_downloads_are_cancelled_and_extra_pages_are_closed() -> None:
 async def test_click_waits_for_popup_denial_and_restores_primary_page() -> None:
     adapter, page = launched_adapter()
     popup = FakeExtraPage()
-    adapter._handle_new_page_event(popup)
+    page.click_hook = lambda: adapter._handle_new_page_event(popup)
 
     await adapter.click(selector="#submit")
 
     assert popup.closed
     assert page.calls[-1] == ("bring-to-front",)
+
+
+@pytest.mark.asyncio
+async def test_click_cancellation_waits_for_popup_denial() -> None:
+    adapter, page = launched_adapter()
+    popup = BlockingFakeExtraPage()
+    page.click_hook = lambda: adapter._handle_new_page_event(popup)
+
+    click_task = asyncio.create_task(adapter.click(selector="#popup"))
+    await popup.close_started.wait()
+    click_task.cancel()
+    await asyncio.sleep(0)
+
+    assert not click_task.done()
+    popup.allow_close.set()
+    with pytest.raises(asyncio.CancelledError):
+        await click_task
+
+    assert popup.closed
+    assert ("bring-to-front",) in page.calls
 
 
 @pytest.mark.asyncio
