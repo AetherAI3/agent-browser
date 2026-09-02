@@ -4,8 +4,6 @@ set -eu
 children=""
 novnc_bind="${AETHER_BROWSER_NOVNC_BIND:-127.0.0.1}"
 novnc_port="${AETHER_BROWSER_NOVNC_PORT:-6080}"
-api_bind="${AETHER_BROWSER_API_BIND:-127.0.0.1}"
-api_port="${AETHER_BROWSER_API_PORT:-8092}"
 
 # noVNC is intentionally unauthenticated in v0.1. Refuse every configurable
 # exposure wider than numeric IPv4 loopback instead of relying on port publishing.
@@ -43,11 +41,7 @@ children="$children $!"
 websockify --web=/usr/share/novnc "$novnc_bind:$novnc_port" 127.0.0.1:5900 &
 children="$children $!"
 
-python -m uvicorn aether_browser.main:app \
-  --host "$api_bind" \
-  --port "$api_port" \
-  --no-proxy-headers \
-  --no-access-log &
+python -m aether_browser.main &
 api_pid=$!
 children="$children $api_pid"
 

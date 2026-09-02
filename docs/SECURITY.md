@@ -83,20 +83,25 @@ recording. Deployers own retention, transport security, and access control outsi
 - The runtime is a single-session worker, not a multi-tenant isolation boundary.
 - Page content can be malicious; structured state is still untrusted input to an agent.
 - DNS and upstream network infrastructure remain external trust dependencies.
-- A source-built container is the intended v0.1 distribution until binary redistribution and
-  installed-license review are complete.
+- Container builds resolve the then-current Google Chrome Stable package. The read-only runtime
+  does not auto-update it; retain the recorded version and image ID, and rebuild promptly for
+  browser security fixes.
+- A locally built container is the intended v0.1 runtime. Do not publish a Chrome-containing
+  image, image tar, or public layer cache without separately documented redistribution
+  authorization.
 - Exact-runner, exact-main acceptance, and demo claims are valid only when the corresponding
   commit-bound evidence records are complete.
 
 ## Deployment checklist
 
 1. Build from a reviewed exact commit and retain its image ID and SBOM.
-2. Keep API, noVNC, and raw VNC off non-loopback interfaces.
-3. Use rootless containers and do not mount a container-engine socket into the workload.
-4. Apply host firewall and egress controls in addition to application policy.
-5. Use distinct high-entropy observer and controller tokens for authenticated mode.
-6. Put remote API access behind a same-host HTTPS proxy that matches the documented tuple.
-7. Never route noVNC through that proxy.
-8. Sanitize logs and evidence before sharing them.
+2. Record the resolved Chrome version and rebuild when browser fixes are released.
+3. Keep API, noVNC, and raw VNC off non-loopback interfaces.
+4. Use rootless containers and do not mount a container-engine socket into the workload.
+5. Apply host firewall and egress controls in addition to application policy.
+6. Use distinct high-entropy observer and controller tokens for authenticated mode.
+7. Put remote API access behind a same-host HTTPS proxy that matches the documented tuple.
+8. Never route noVNC through that proxy.
+9. Sanitize logs and evidence before sharing them.
 
 Report suspected boundary failures through the private process in [`../SECURITY.md`](../SECURITY.md).

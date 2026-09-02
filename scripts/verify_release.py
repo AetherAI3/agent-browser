@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CORE_FILES = (
+    ".grype.yaml",
     ".dockerignore",
     ".aether-ci.yml",
     ".github/workflows/ci.yml",
@@ -367,6 +368,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
         entrypoint = (ROOT / "scripts/container-entrypoint.sh").read_text(encoding="utf-8")
         acceptance = (ROOT / "scripts/acceptance.sh").read_text(encoding="utf-8")
+        grype_policy = (ROOT / ".grype.yaml").read_text(encoding="utf-8")
         trusted_workflow = (ROOT / ".github/workflows/trusted-runner.yml").read_text(
             encoding="utf-8"
         )
@@ -394,9 +396,25 @@ def _container_loopback_contract() -> tuple[bool, str]:
         '[ "$novnc_bind" != "127.0.0.1" ]',
         "x11vnc -display :99 -listen 127.0.0.1",
         'websockify --web=/usr/share/novnc "$novnc_bind:$novnc_port"',
+        "python -m aether_browser.main &",
     )
     if any(fragment not in entrypoint for fragment in entrypoint_contract):
         issues.append("entrypoint does not enforce the noVNC loopback bind")
+    if "aether_browser.main:app" in entrypoint or "python -m uvicorn" in entrypoint:
+        issues.append("entrypoint bypasses the validated module launcher")
+    browser_contract = (
+        "python -m patchright install --with-deps chrome",
+        "command -v google-chrome-stable",
+        "google-chrome-stable --version",
+        "dpkg-query --show google-chrome-stable",
+        "org.opencontainers.image.documentation=",
+    )
+    if any(fragment not in dockerfile for fragment in browser_contract):
+        issues.append("image does not install and verify the runtime-selected Chrome channel")
+    if "python -m patchright install --with-deps chromium" in dockerfile:
+        issues.append("image installs a browser payload that does not match the runtime channel")
+    if "org.opencontainers.image.licenses" in dockerfile:
+        issues.append("image incorrectly applies Aether's source-only license to all contents")
     websockify_commands = [
         line.strip() for line in entrypoint.splitlines() if line.startswith("websockify ")
     ]
@@ -466,6 +484,34 @@ def _container_loopback_contract() -> tuple[bool, str]:
     )
     if any(fragment not in trusted_workflow for fragment in workflow_handoff):
         issues.append("trusted workflow lacks the immutable image-ID handoff")
+    policy_lines = tuple(
+        line.rstrip()
+        for line in grype_policy.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    )
+    expected_policy = (
+        "ignore:",
+        "  - namespace: nvd:cpe",
+        "    fix-state: fixed",
+        "    match-type: cpe-match",
+        "    reason: CPE-only UnknownPackage match retained as an advisory; "
+        "authoritative package findings remain blocking",
+        "    package:",
+        "      type: UnknownPackage",
+    )
+    if policy_lines != expected_policy:
+        issues.append(
+            "Grype policy is broader than the single fixed nvd:cpe UnknownPackage "
+            "cpe-match advisory class"
+        )
+    vulnerability_scan_contract = (
+        'grype --config .grype.yaml "sbom:artifacts/sbom.spdx.json"',
+        "--fail-on high --only-fixed --output json",
+        "> artifacts/vulnerabilities.json",
+        "> artifacts/browser-package.txt",
+    )
+    if any(fragment not in trusted_workflow for fragment in vulnerability_scan_contract):
+        issues.append("trusted workflow weakens or omits exact-image vulnerability evidence")
 
     return (
         not issues,

@@ -2,8 +2,8 @@ FROM python:3.11-slim-bookworm@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1
 
 LABEL org.opencontainers.image.title="Aether Browser" \
       org.opencontainers.image.version="0.1.0" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.source="https://github.com/AetherAI3/aetherbrowser"
+      org.opencontainers.image.source="https://github.com/AetherAI3/aetherbrowser" \
+      org.opencontainers.image.documentation="https://github.com/AetherAI3/aetherbrowser/blob/main/THIRD_PARTY_NOTICES.md"
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -32,7 +32,11 @@ COPY . /app
 
 RUN python -m pip install --require-hashes -r requirements.lock \
     && python -m pip install --no-build-isolation --no-deps . \
-    && python -m patchright install --with-deps chromium \
+    && install -d -m 0755 /opt/patchright-browsers \
+    && python -m patchright install --with-deps chrome \
+    && command -v google-chrome-stable \
+    && google-chrome-stable --version \
+    && dpkg-query --show google-chrome-stable \
     && groupadd --gid 10001 aether \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin aether \
     && chown -R root:root /app /opt/patchright-browsers \

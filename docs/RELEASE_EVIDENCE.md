@@ -23,7 +23,7 @@ Release candidate: `v0.1.0-rc.1` proposed; tag or private prerelease not yet evi
 | Isolated acceptance | exact image ID, network proof, cleanup proof | Not captured |
 | README quickstart | fresh-directory reproduction | Not captured |
 | Demo | link to `DEMO_EVIDENCE.md` after capture | Not captured |
-| Third-party review | exact installed-package notice bundle | Not captured |
+| Third-party review | Chrome terms, exact package/credits, notices, and redistribution decision | Not captured |
 | Repository state | private visibility and open-PR review | Not captured |
 
 ## Closure assertions
@@ -35,7 +35,9 @@ Each assertion needs exact evidence before it may be marked true:
 - No high-severity security finding or unresolved review thread remains.
 - The source release reproduces the documented Linux Compose quickstart.
 - Demo media was captured from the exact accepted image and has recorded checksums.
-- Binary image publication remains off until installed-license obligations are reviewed.
+- Chrome-containing image, image-tar, and public layer-cache publication remains off unless
+  separate redistribution authorization is documented; an SBOM or notice bundle alone is not
+  authorization.
 - Repository visibility, Pages, and launch channels remain unpublished until owner approval.
 
 ## Sanitization

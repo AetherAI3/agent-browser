@@ -13,7 +13,7 @@ local API client ───────────────> FastAPI ──> 
                                          single-session manager
                                                 │
                                                 v
-                                         Patchright + Chrome
+                                  Patchright + Google Chrome Stable
                                                 │
                                             Xvfb display
                                                 │
@@ -33,8 +33,8 @@ The session ID remains explicit in every session-scoped payload so a future mult
 - API default: `127.0.0.1:8092`.
 - noVNC default: `127.0.0.1:6080`.
 - Actual API and noVNC listeners accept numeric loopback literals only.
-- The supported module launcher owns the validated Uvicorn bind; raw Uvicorn CLI overrides are
-  outside the transport contract.
+- The container invokes `python -m aether_browser.main`; that validated module launcher owns the
+  Uvicorn bind, and raw Uvicorn CLI overrides are outside the transport contract.
 - Direct non-loopback API binding is rejected even when bearer tokens are configured.
 - Authenticated remote API use requires explicit remote and reverse-proxy modes, a non-loopback
   effective host, distinct strong observer/controller tokens, an exact loopback trusted-proxy
@@ -55,7 +55,7 @@ Trusted CI uses a different, stricter topology. The preceding build job publishe
 The browser accepts top-level HTTP(S) navigation only after address and DNS policy checks. Every
 redirect and browser-initiated network-producing top-level navigation is revalidated;
 same-document and history-only changes do not produce a routed request and are not claimed as
-revalidated. Chromium disables non-proxied WebRTC UDP so WebRTC cannot bypass the pinned TCP
+revalidated. Chrome disables non-proxied WebRTC UDP so WebRTC cannot bypass the pinned TCP
 proxy boundary. Downloads are disabled; popups are denied or closed; new tabs remain bounded to
 session ownership. The public API exposes no script evaluation, DevTools, upload, clipboard,
 extension, shell, filesystem, credential, or cookie import operation.

@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/AetherAI3/aetherbrowser/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/AetherAI3/aetherbrowser/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="LICENSE"><img alt="Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-0b7285"></a>
+  <a href="LICENSE"><img alt="Aether source license: Apache-2.0" src="https://img.shields.io/badge/source%20license-Apache--2.0-0b7285"></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ed">
   <img alt="Self-hosted" src="https://img.shields.io/badge/runtime-self--hosted-2f9e44">
@@ -28,8 +28,8 @@
 
 > [!IMPORTANT]
 > **Aether Browser v0.1.0 is a source-first, self-hosted release candidate.** It is not a hosted
-> service. Prebuilt container publication remains intentionally disabled until the exact-image
-> third-party notice bundle receives a separate distribution review.
+> service. No Chrome-containing image, image tar, or public layer cache is distributed unless
+> separate redistribution authorization is documented.
 
 ### Exact-release demo
 
@@ -47,8 +47,8 @@ in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md); the social preview is not r
 
 The supported one-command quickstart uses **Docker Engine on Linux** with Docker Compose v2.
 It builds the source checkout and starts Xvfb, x11vnc, noVNC, and the API. That stack can own one
-headed Chromium session, launched by `/browser/session/create`, and both user-facing listeners bind
-to the host's numeric loopback interface.
+headed Google Chrome Stable session, launched by `/browser/session/create`, and both user-facing
+listeners bind to the host's numeric loopback interface.
 
 ```bash
 docker compose up --build
@@ -62,8 +62,10 @@ terminal:
 curl -fsS http://127.0.0.1:8092/browser/health | jq .
 ```
 
-The first build downloads the pinned Python environment and Patchright browser payload, so it
-can take several minutes. Compose uses Linux host networking to keep the unauthenticated v0.1
+The first build installs the hash-locked Python environment and uses Patchright to install the
+then-current Google Chrome Stable package, so it can take several minutes. The exact browser
+version is captured with each accepted image; rebuilding the same source later may resolve a newer
+Stable package. Compose uses Linux host networking to keep the unauthenticated v0.1
 noVNC surface on numeric loopback; Docker Desktop and remote-host deployment are not part of
 this quickstart contract. Stop the foreground process with `Ctrl+C`.
 
@@ -113,7 +115,7 @@ The same flow is available as [`examples/curl.sh`](examples/curl.sh).
 
 | Capability | v0.1 contract |
 |---|---|
-| Browser | One headed Chromium session launched through Patchright |
+| Browser | One headed Google Chrome Stable session launched through Patchright |
 | State | URL, title, readable text, bounded accessibility nodes, viewport, and PNG snapshot |
 | Actions | Navigate, click, type, scroll, and allowlisted key presses |
 | Human view | The same Xvfb display through loopback-only x11vnc and noVNC |
@@ -131,7 +133,7 @@ flowchart LR
     Agent["Agent client"] -->|bounded JSON API| API["FastAPI"]
     API --> Guard["authority + navigation policy"]
     Guard --> Session["single-session manager"]
-    Session --> Chrome["Patchright + headed Chromium"]
+    Session --> Chrome["Patchright + headed Google Chrome"]
     Chrome --> State["text · accessibility · PNG"]
     State --> Agent
     Chrome --> Display["shared Xvfb display"]
@@ -195,9 +197,11 @@ is published. Security reports use the private process in [`SECURITY.md`](SECURI
 
 ## License and third-party notices
 
-Aether-owned code is licensed under the [Apache License 2.0](LICENSE). Dependencies, browser
-payloads, system packages, fonts, and bundled web assets remain under their respective terms;
-see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). A source checkout that builds locally is
-the v0.1 distribution target until binary redistribution review is complete.
+Aether-owned source code is licensed under the [Apache License 2.0](LICENSE). Google Chrome is
+separately licensed under [Google's Chrome terms](https://www.google.com/chrome/terms/) and is not
+covered by Aether's Apache license; dependencies, system packages, fonts, and web assets also
+remain under their respective terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Aether is not affiliated with or endorsed by Google. The v0.1 distribution target is source that
+builds locally; this repository does not distribute a prebuilt Chrome-containing image.
 
 <p align="center"><strong>Aether Browser</strong> · See what your agent sees.</p>

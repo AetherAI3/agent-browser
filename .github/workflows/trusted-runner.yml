@@ -193,8 +193,16 @@ jobs:
             --output "$RUNNER_TEMP/aether-browser.oci.tar" "$IMAGE_ID"
           syft "oci-archive:$RUNNER_TEMP/aether-browser.oci.tar" \
             --output spdx-json=artifacts/sbom.spdx.json
-          grype "sbom:artifacts/sbom.spdx.json" --fail-on high --only-fixed \
-            --output json > artifacts/vulnerabilities.json
+          podman --remote run --rm --network none --read-only --cap-drop=all \
+            --security-opt=no-new-privileges --pull=never --http-proxy=false \
+            --entrypoint sh "$IMAGE_ID" -c \
+            'set -eu; browser="$(command -v google-chrome-stable)"; test -x "$browser"; "$browser" --version; dpkg-query --show google-chrome-stable; dpkg --print-architecture' \
+            > artifacts/browser-package.txt
+          grep -Eq '^Google Chrome [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+            artifacts/browser-package.txt
+          grype --config .grype.yaml "sbom:artifacts/sbom.spdx.json" \
+            --fail-on high --only-fixed --output json \
+            > artifacts/vulnerabilities.json
           podman --remote run --rm --pull=never --http-proxy=false \
             --entrypoint python "$IMAGE_ID" -I - <<'PY' \
             > artifacts/python-distributions.json
@@ -215,7 +223,7 @@ jobs:
           PY
           podman --remote run --rm --pull=never --http-proxy=false \
             --entrypoint sh "$IMAGE_ID" -c \
-            "find /usr/share/doc /opt/patchright-browsers -type f \
+            "find /usr/share/doc /opt/google/chrome /opt/patchright-browsers -type f \
               \( -iname copyright -o -iname 'license*' -o -iname 'notice*' \) -print0 \
               | sort -z | tar --null --files-from=- -czf -" \
             > artifacts/installed-notices.tar.gz

@@ -8,18 +8,18 @@
 
 - Name: **Aether Browser**
 - Tagline: **See what your agent sees.**
-- Positioning: Self-hosted Chromium for AI agents with bounded API control, structured snapshots,
+- Positioning: Self-hosted Google Chrome for AI agents with bounded API control, structured snapshots,
   a live local noVNC view, and human takeover of the same session.
 - Quickstart: `docker compose up --build` on Linux Docker Engine.
 - Distribution: Apache-2.0 Aether-owned source; locally built container for v0.1.
-- Boundary: no hosted-service claim, no remote noVNC claim, and no prebuilt image publication until
-  exact installed-license review is complete.
+- Boundary: no hosted-service claim, no remote noVNC claim, and no Chrome-containing image, image
+  tar, or public layer-cache publication unless separate redistribution authorization is documented.
 
 ## GitHub Release
 
 ### Aether Browser v0.1.0 — See what your agent sees
 
-Aether Browser runs one headed Chromium session that an agent controls through a small JSON API
+Aether Browser runs one headed Google Chrome Stable session that an agent controls through a small JSON API
 while a human watches or takes over the same local display through noVNC.
 
 The v0.1 source release includes:
@@ -43,9 +43,9 @@ checksums, known limitations, and third-party notice status are recorded in the 
 
 ## Show HN
 
-### Show HN: Aether Browser — self-hosted Chromium an agent and human can share
+### Show HN: Aether Browser — self-hosted Chrome an agent and human can share
 
-I built Aether Browser around one simple interaction: an agent controls a headed Chromium session
+I built Aether Browser around one simple interaction: an agent controls a headed Chrome session
 through a bounded JSON API while you watch or take over the exact same local display through
 noVNC.
 
@@ -59,7 +59,7 @@ API contract, the local human-takeover workflow, and the documented security bou
 
 ## Reddit
 
-### Aether Browser: self-hosted Chromium with API control and a live local noVNC view
+### Aether Browser: self-hosted Chrome with API control and a live local noVNC view
 
 Aether Browser gives an AI agent a small browser-control API and gives the human operator the live
 view of that same headed session. It exposes bounded structured state plus screenshots, supports a
@@ -97,7 +97,7 @@ security documentation, rootless acceptance tooling, and exact-commit release ev
 
 **Aether Browser — See what your agent sees.**
 
-Self-hosted Chromium with bounded API control, structured snapshots, and a live local noVNC view
+Self-hosted Chrome with bounded API control, structured snapshots, and a live local noVNC view
 for human takeover of the same session. Linux quickstart: `docker compose up --build`.
 
 ## Publication checklist
@@ -110,4 +110,6 @@ for human takeover of the same session. Linux quickstart: `docker compose up --b
   are recorded.
 - Release notes name known limitations and do not imply hosted operation or remote noVNC safety.
 - Third-party notices and source-distribution obligations were reviewed for the exact candidate.
+- No Chrome-containing image, image tar, or public layer cache is attached unless separately
+  documented redistribution authorization exists.
 - Links resolve after publication, and no private host, token, log, or user data appears in copy.

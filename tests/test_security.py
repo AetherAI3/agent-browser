@@ -518,6 +518,8 @@ def test_run_disables_uvicorn_proxy_header_trust(monkeypatch: pytest.MonkeyPatch
     run()
 
     assert captured["proxy_headers"] is False
+    assert captured["access_log"] is False
+    assert not isinstance(captured["args"][0], str)
 
 
 def test_raw_uvicorn_import_string_entrypoints_are_refused() -> None:
