@@ -75,8 +75,14 @@ function compact(object) {
   return out
 }
 
+// Trailing slashes are trimmed by scanning rather than with /\/+$/, which backtracks
+// polynomially on a long run of slashes. The base URL is normally the developer's own
+// config, but a linear scan costs nothing and removes the failure mode outright.
 function normalizeBaseUrl(value) {
-  return String(value).replace(/\/+$/, '')
+  const text = String(value)
+  let end = text.length
+  while (end > 0 && text.charCodeAt(end - 1) === 0x2f) end -= 1
+  return text.slice(0, end)
 }
 
 /**
