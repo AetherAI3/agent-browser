@@ -160,6 +160,7 @@ class PinnedSocks5Proxy:
         self._relay_chunk_size = relay_chunk_size
         self._max_concurrent_connections = max_concurrent_connections
         self._dialer = dialer or _numeric_dialer
+        self._planner_refusal_generation = 0
         self._capacity = asyncio.Semaphore(max_concurrent_connections)
         self._connections: set[asyncio.Task[None]] = set()
         self._server: asyncio.AbstractServer | None = None
@@ -184,6 +185,12 @@ class PinnedSocks5Proxy:
     def server_url(self) -> str:
         host = f"[{self.host}]" if self._listen_address.version == 6 else self.host
         return f"socks5://{host}:{self.port}"
+
+    @property
+    def planner_refusal_generation(self) -> int:
+        """Monotonic, detail-free signal that a requested endpoint lacked a pin."""
+
+        return self._planner_refusal_generation
 
     async def start(self) -> None:
         if self._server is not None or self._closing:
@@ -311,6 +318,7 @@ class PinnedSocks5Proxy:
                     except asyncio.CancelledError:
                         raise
                     except Exception:
+                        self._planner_refusal_generation += 1
                         await self._send_reply(client_writer, 0x02)
                         return
                     if plan.port != port or not plan.addresses or len(plan.addresses) > 64:

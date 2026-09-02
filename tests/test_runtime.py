@@ -16,6 +16,8 @@ import pytest
 from aether_browser.models import MAX_ACCESSIBILITY_NODES, MAX_READABLE_TEXT_CHARS
 from aether_browser.policy import NavigationPolicy, PolicyError
 from aether_browser.runtime import (
+    BrowserDestinationBlockedError,
+    BrowserOperationError,
     InvalidBrowserInteractionError,
     PatchrightBrowserAdapter,
 )
@@ -269,6 +271,47 @@ async def test_top_level_navigation_guard_aborts_blocked_redirect() -> None:
     assert route.aborted
     assert not route.continued
     assert isinstance(adapter._blocked_navigation_error, Blocked)
+
+
+@pytest.mark.asyncio
+async def test_proxy_planner_refusal_during_navigation_is_typed_and_sanitized() -> None:
+    class ProxyStub:
+        planner_refusal_generation = 7
+
+    proxy: Any = ProxyStub()
+
+    class RefusedPage(FakePage):
+        async def goto(self, _url: str, **_options: object) -> None:
+            proxy.planner_refusal_generation += 1
+            raise RuntimeError("private SOCKS target detail")
+
+    adapter, _page = launched_adapter(RefusedPage())
+    adapter._proxy = proxy
+
+    with pytest.raises(BrowserDestinationBlockedError) as raised:
+        await adapter.navigate("https://allowed.example.org/redirect")
+
+    assert raised.value.code == "DESTINATION_BLOCKED"
+    assert "private" not in str(raised.value).casefold()
+
+
+@pytest.mark.asyncio
+async def test_navigation_failure_without_planner_refusal_remains_operational_error() -> None:
+    class ProxyStub:
+        planner_refusal_generation = 7
+
+    class FailedPage(FakePage):
+        async def goto(self, _url: str, **_options: object) -> None:
+            raise RuntimeError("private browser detail")
+
+    adapter, _page = launched_adapter(FailedPage())
+    proxy: Any = ProxyStub()
+    adapter._proxy = proxy
+
+    with pytest.raises(BrowserOperationError, match="Navigation failed") as raised:
+        await adapter.navigate("https://allowed.example.org/")
+
+    assert "private" not in str(raised.value).casefold()
 
 
 @pytest.mark.asyncio
@@ -534,8 +577,6 @@ async def test_close_releases_page_context_browser_and_patchright_manager() -> N
 
 @pytest.mark.asyncio
 async def test_close_attempts_every_resource_and_retains_a_failed_handle_for_retry() -> None:
-    from aether_browser.runtime import BrowserOperationError
-
     class FailOnceClosable:
         def __init__(self) -> None:
             self.attempts = 0

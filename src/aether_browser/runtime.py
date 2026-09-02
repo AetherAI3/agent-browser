@@ -27,6 +27,7 @@ from aether_browser.models import (
     MAX_SCREENSHOT_BASE64_CHARS,
     AccessibilityNode,
     AccessibilitySnapshot,
+    ErrorCode,
     Viewport,
 )
 
@@ -119,6 +120,12 @@ class BrowserNotReadyError(BrowserRuntimeError):
 
 class BrowserOperationError(BrowserRuntimeError):
     """A bounded browser operation failed."""
+
+
+class BrowserDestinationBlockedError(BrowserRuntimeError):
+    """The egress proxy refused an endpoint without an authorized pin."""
+
+    code = ErrorCode.DESTINATION_BLOCKED
 
 
 class InvalidBrowserInteractionError(BrowserRuntimeError):
@@ -411,6 +418,8 @@ class PatchrightBrowserAdapter:
 
     async def navigate(self, url: str) -> BrowserPageState:
         page = self._require_page()
+        proxy = self._proxy
+        planner_refusal_generation = proxy.planner_refusal_generation if proxy is not None else None
         self._blocked_navigation_error = None
         try:
             async with asyncio.timeout(self._navigation_timeout):
@@ -431,6 +440,14 @@ class PatchrightBrowserAdapter:
                 raise
             if not self.is_ready:
                 raise BrowserNotReadyError("The browser is not ready.") from None
+            if (
+                proxy is not None
+                and planner_refusal_generation is not None
+                and proxy.planner_refusal_generation != planner_refusal_generation
+            ):
+                raise BrowserDestinationBlockedError(
+                    "The navigation destination was blocked."
+                ) from None
             raise BrowserOperationError("Navigation failed.") from None
 
     async def snapshot(self) -> BrowserSnapshot:
@@ -777,6 +794,7 @@ class PatchrightBrowserAdapter:
 
 __all__ = [
     "BrowserAdapter",
+    "BrowserDestinationBlockedError",
     "BrowserLaunchError",
     "BrowserNotReadyError",
     "BrowserOperationError",

@@ -385,7 +385,7 @@ status, redirected_ssrf = call(
     {"session_id": session_id, "url": fixture_origin + "/redirect-private"},
     controller,
 )
-assert status in {400, 403} and redirected_ssrf["status"] == "error"
+assert status == 403 and redirected_ssrf["error"]["code"] == "DESTINATION_BLOCKED"
 
 # A refused redirect must not discard the original safe page.
 status, navigated = call(

@@ -119,6 +119,7 @@ async def test_unknown_hostname_and_wrong_port_are_refused_without_dial() -> Non
         raise AssertionError("a refused endpoint must not be dialed")
 
     proxy = PinnedSocks5Proxy(guard.connection_plan, dialer=dialer)
+    refusal_generation = proxy.planner_refusal_generation
     await proxy.start()
     try:
         for hostname, port in (
@@ -138,6 +139,7 @@ async def test_unknown_hostname_and_wrong_port_are_refused_without_dial() -> Non
 
     assert not dialed
     assert resolver_calls == ["known.example.org"]
+    assert proxy.planner_refusal_generation == refusal_generation + 2
 
 
 @pytest.mark.asyncio
