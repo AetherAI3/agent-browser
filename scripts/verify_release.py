@@ -449,6 +449,8 @@ def _container_loopback_contract() -> tuple[bool, str]:
         "loopback-listener-proof",
         '"${podman_cli[@]}" exec -i "$fixture" python -',
         'headers={"Authorization": f"Bearer {sys.argv[4]}"}',
+        'socket.create_connection(("127.0.0.1", 5900), timeout=1)',
+        '"vnc-rfb-readiness"',
         "find /tmp /home/aether -type f -name blocked.txt -print -quit",
         '"download-non-persistence"',
         '"isolated-pod-network-none"',
