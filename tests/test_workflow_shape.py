@@ -105,9 +105,8 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     assert "id: image_proof" in text
     assert "image_id: ${{ steps.image_proof.outputs.image_id }}" in text
     assert (
-        "image_id=\"$(podman --remote image inspect "
-        "aether-browser:${GITHUB_SHA} --format '{{.Id}}')\""
-        in text
+        'image_id="$(podman --remote image inspect '
+        "aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"" in text
     )
     assert "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}" in text
     assert text.count("bash scripts/acceptance.sh") == 1

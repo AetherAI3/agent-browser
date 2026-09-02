@@ -457,7 +457,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
     workflow_handoff = (
         "id: image_proof",
         "image_id: ${{ steps.image_proof.outputs.image_id }}",
-        "image_id=\"$(podman --remote image inspect "
+        'image_id="$(podman --remote image inspect '
         "aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"",
         "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}",
     )
