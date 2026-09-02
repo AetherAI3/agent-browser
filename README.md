@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/agent-browser-logo.png" alt="Pixel-art computer displaying a globe and pointer, the Agent Browser logo" width="520">
+  <img src="assets/agent-browser-logo.png" alt="Pixel-art computer displaying a globe and pointer, the Agent Browser logo" width="260">
 </p>
 
 <h1 align="center">Agent Browser</h1>
