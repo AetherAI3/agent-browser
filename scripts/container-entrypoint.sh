@@ -35,7 +35,8 @@ while [ ! -S /tmp/.X11-unix/X99 ]; do
   sleep 0.1
 done
 
-x11vnc -display :99 -listen 127.0.0.1 -forever -shared -nopw -rfbport 5900 -quiet &
+x11vnc -display :99 -listen 127.0.0.1 -no6 -noipv6 \
+  -forever -shared -nopw -rfbport 5900 -quiet &
 children="$children $!"
 
 websockify --web=/usr/share/novnc "$novnc_bind:$novnc_port" 127.0.0.1:5900 &
