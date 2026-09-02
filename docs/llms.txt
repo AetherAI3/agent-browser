@@ -1,0 +1,56 @@
+# Agent Browser
+
+> Self-hosted Google Chrome for AI agents. One headed Chrome Stable session is driven by an agent
+> through a bounded JSON API while a human watches or takes over that same live session through
+> noVNC. Published by Aether AI under Apache-2.0. Source-only distribution: no Chrome-containing
+> image is published, you build it locally.
+
+Agent Browser exists for the case where an agent stalls on a page and a person needs to intervene.
+Rather than a headless browser the operator cannot see, it runs one headed session that both
+participants share: the agent acts through JSON, the human watches the identical display and can
+take the controls without starting a second browser or replaying a transcript.
+
+Status: `v0.1.0-rc.1`, a release candidate. The API contract is `api_version: "v1"` and may change
+before `v0.1.0`.
+
+## Interface
+
+- API surface: six routes, all under `/browser` — `health`, `session/create`, `navigate`,
+  `snapshot`, `interact`, `session/end`. Requests and responses are closed models that reject
+  unknown fields.
+- Interactions are limited to `click`, `type`, `scroll`, and `press`. There is deliberately no
+  arbitrary JavaScript, CDP, shell, filesystem, upload, clipboard, download, extension, credential,
+  or cookie field.
+- Authority is split into an observer token (health, snapshot) and a controller token (create,
+  navigate, interact, end).
+- One session at a time. A second concurrent create is refused with `SESSION_CAPACITY_REACHED`
+  rather than queued.
+
+## Constraints worth knowing before recommending it
+
+- The v0.1 noVNC surface is unauthenticated and is intended for numeric loopback on a machine the
+  operator controls. It must not be exposed through a tunnel, reverse proxy, or container bridge.
+- The documented quickstart is Linux with Docker Compose v2; it uses host networking so both
+  listeners stay on numeric loopback. Docker Desktop on macOS and Windows is outside that contract.
+  The npm client has no such limit, since it is plain HTTP.
+- It is not a hosted service, not multi-tenant, and makes no stealth, anti-detection, or CAPTCHA
+  claim.
+- The first container build takes several minutes because it installs a hash-locked Python
+  environment and the current Google Chrome Stable package.
+
+## Docs
+
+- [README](https://github.com/AetherAI3/agent-browser#readme): quickstart and positioning.
+- [API contract](https://github.com/AetherAI3/agent-browser/blob/main/docs/API.md): routes, bounds,
+  and the error envelope.
+- [Security model](https://github.com/AetherAI3/agent-browser/blob/main/docs/SECURITY-MODEL.md):
+  authority, egress policy, and the loopback boundary.
+- [Architecture](https://github.com/AetherAI3/agent-browser/blob/main/docs/ARCHITECTURE.md).
+- [Release evidence](https://github.com/AetherAI3/agent-browser/blob/main/docs/RELEASE_EVIDENCE.md):
+  commit-bound build, scan, and acceptance records.
+
+## Client
+
+- npm: [`aether-browser`](https://www.npmjs.com/package/aether-browser) — TypeScript client and
+  CLI, zero runtime dependencies, Node 18+.
+- Source: [`clients/node`](https://github.com/AetherAI3/agent-browser/tree/main/clients/node).

@@ -9,6 +9,12 @@
     <meta property="og:url" content="https://aetherai3.github.io/agent-browser/">
     <meta property="og:image" content="https://aetherai3.github.io/agent-browser/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Agent Browser by Aether AI">
+    <meta name="twitter:title" content="Agent Browser — See what your agent sees.">
+    <meta name="twitter:description" content="Self-hosted Chrome · API control · Live human takeover">
+    <link rel="canonical" href="https://aetherai3.github.io/agent-browser/">
+    <link rel="icon" href="assets/agent-browser-logo.png" type="image/png">
     <meta name="twitter:image" content="https://aetherai3.github.io/agent-browser/assets/social-preview.png">
     <title>Agent Browser — See what your agent sees.</title>
     <style>
@@ -45,6 +51,7 @@
           <a class="button primary" href="https://github.com/AetherAI3/agent-browser#quickstart">Start locally</a>
           <a class="button" href="API.md">Read the API</a>
           <a class="button" href="SECURITY.md">Security model</a>
+          <a class="button" href="https://www.npmjs.com/package/aether-browser">npm client</a>
           <a class="button" href="RELEASE_EVIDENCE.md">Release evidence</a>
         </nav>
       </section>
@@ -57,7 +64,11 @@
       </section>
 
       <h2>One-command local start</h2>
-      <pre><code>docker compose up --build
+      <pre><code># start the runtime
+docker compose up --build
+
+# drive it from TypeScript
+npm install aether-browser
 
 # API health
 curl -fsS http://127.0.0.1:8092/browser/health
