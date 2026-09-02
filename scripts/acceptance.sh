@@ -80,7 +80,8 @@ image_tag="localhost/aether-browser:${expected_sha}"
 actual_image_id="$(
   "${podman_cli[@]}" image inspect "$image_tag" --format '{{.Id}}' 2>/dev/null || true
 )"
-if [ "$actual_image_id" != "$expected_image_id" ]; then
+actual_image_hash="${actual_image_id#sha256:}"
+if [ "$actual_image_hash" != "$image_hash" ]; then
   echo '{"result":"FAIL","reason":"the exact prebuilt image is absent or mismatched"}'
   exit 1
 fi
@@ -196,8 +197,8 @@ if [ -z "$browser_pod" ] || [ "$browser_pod" != "$fixture_pod" ]; then
 fi
 browser_image="$("${podman_cli[@]}" inspect --format '{{.Image}}' "$browser")"
 fixture_image="$("${podman_cli[@]}" inspect --format '{{.Image}}' "$fixture")"
-if [ "$browser_image" != "$expected_image_id" ] \
-  || [ "$fixture_image" != "$expected_image_id" ]; then
+if [ "${browser_image#sha256:}" != "$image_hash" ] \
+  || [ "${fixture_image#sha256:}" != "$image_hash" ]; then
   echo '{"result":"FAIL","reason":"a workload does not use the handed-off image ID"}'
   exit 1
 fi

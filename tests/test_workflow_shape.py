@@ -207,7 +207,10 @@ def test_acceptance_uses_an_offline_pod_through_remote_podman() -> None:
     assert 'expected_sha="${GITHUB_SHA:-}"' in text
     assert 'expected_image_id="${AETHER_ACCEPTANCE_IMAGE_ID:-}"' in text
     assert "image inspect \"$image_tag\" --format '{{.Id}}'" in text
-    assert 'if [ "$actual_image_id" != "$expected_image_id" ]' in text
+    assert 'actual_image_hash="${actual_image_id#sha256:}"' in text
+    assert 'if [ "$actual_image_hash" != "$image_hash" ]' in text
+    assert '"${browser_image#sha256:}" != "$image_hash"' in text
+    assert '"${fixture_image#sha256:}" != "$image_hash"' in text
     assert '"${podman_cli[@]}" pod create' in text
     assert '--name "$pod" --network none --share net --hosts-file none' in text
     assert "--cpus=2 --memory=2g" in text
