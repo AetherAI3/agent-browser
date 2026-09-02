@@ -24,6 +24,7 @@
   <a href="docs/API.md">API</a> ·
   <a href="docs/SECURITY.md">Security model</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="clients/node/README.md">Node client</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="docs/RELEASE_EVIDENCE.md">Release status</a>
 </p>
@@ -91,6 +92,34 @@ curl -fsS -X POST http://127.0.0.1:8092/browser/session/end -H 'Content-Type: ap
 ```
 
 The same flow is available as [`examples/curl.sh`](examples/curl.sh).
+
+## Node and TypeScript client
+
+The same API from Node, with types and guaranteed session cleanup:
+
+```bash
+npm install aether-browser
+```
+
+```ts
+import { AgentBrowser, withSession } from 'aether-browser'
+
+const browser = new AgentBrowser({ controllerToken: process.env.AGENT_BROWSER_CONTROLLER_TOKEN })
+
+await withSession(browser, async (session) => {
+  const page = await session.navigate('https://example.com')
+  await session.click({ selector: '#login' })
+  await session.type({ selector: '#user', text: 'ada' })
+  console.log(page.title, session.viewUrl)
+})
+```
+
+`withSession` always attempts to end the session, including when the callback throws, so a crash
+cannot leave the single session slot occupied. The package has no runtime dependencies and runs on
+any platform that can reach the server. It also carries a small CLI: `npx aether-browser doctor`
+reports what is missing before a first run, and `up` builds and starts the runtime on a Linux host.
+
+See [`clients/node/README.md`](clients/node/README.md).
 
 ## What happened
 

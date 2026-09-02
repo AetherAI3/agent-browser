@@ -140,3 +140,48 @@ jobs:
           python -m pytest -q tests/test_auth.py tests/test_policy.py
           tests/test_security.py tests/test_workflow_shape.py
       - run: python -m pip check
+
+  node-client:
+    needs: change-map
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: clients/node
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+      - name: Refuse runtime dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          deps="$(node -p "JSON.stringify(require('./package.json').dependencies || {})")"
+          test "$deps" = "{}"
+      - name: Unit tests
+        run: node --test "test/*.test.js"
+      - name: Type declarations match the implementation
+        run: |
+          npm install --no-save --no-audit --no-fund typescript@5.9.3
+          npx tsc --noEmit -p tsconfig.json
+      - name: Packaging is complete and free of stray files
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          npm pack --dry-run --json > /tmp/pack.json
+          node -e '
+            const [pack] = require("/tmp/pack.json");
+            const files = pack.files.map((f) => f.path).sort();
+            const required = ["package.json", "README.md", "LICENSE", "src/index.js", "src/index.d.ts", "src/cli.js"];
+            for (const name of required) {
+              if (!files.includes(name)) throw new Error(`missing from tarball: ${name}`);
+            }
+            const stray = files.filter((f) => f.startsWith("test/") || f.endsWith("tsconfig.json"));
+            if (stray.length) throw new Error(`tests must not ship: ${stray.join(", ")}`);
+            console.log(`tarball: ${files.length} files, ${pack.size} bytes`);
+          '
+      - name: CLI runs without a server present
+        run: node src/cli.js --version && node src/cli.js help

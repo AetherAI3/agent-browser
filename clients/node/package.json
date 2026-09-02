@@ -1,0 +1,60 @@
+{
+  "name": "aether-browser",
+  "version": "0.1.0-rc.1",
+  "description": "Client and CLI for Agent Browser by Aether AI: drive one self-hosted Chrome session over a closed HTTP API and watch or take over that same session through noVNC.",
+  "license": "Apache-2.0",
+  "author": "Aether AI",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "aether-browser": "./src/cli.js"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AetherAI3/agent-browser.git",
+    "directory": "clients/node"
+  },
+  "homepage": "https://github.com/AetherAI3/agent-browser#readme",
+  "bugs": {
+    "url": "https://github.com/AetherAI3/agent-browser/issues"
+  },
+  "keywords": [
+    "agent-browser",
+    "browser",
+    "automation",
+    "ai-agents",
+    "chrome",
+    "novnc",
+    "self-hosted",
+    "human-in-the-loop",
+    "computer-use"
+  ],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

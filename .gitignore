@@ -14,3 +14,7 @@ build/
 
 # Local release-evidence downloads (never committed)
 .release-downloads/
+
+# Node client build and pack artifacts
+node_modules/
+*.tgz
