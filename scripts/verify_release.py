@@ -457,7 +457,8 @@ def _container_loopback_contract() -> tuple[bool, str]:
     workflow_handoff = (
         "id: image_proof",
         "image_id: ${{ steps.image_proof.outputs.image_id }}",
-        "image_id=\"$(podman --remote image inspect aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"",
+        "image_id=\"$(podman --remote image inspect "
+        "aether-browser:${GITHUB_SHA} --format '{{.Id}}')\"",
         "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}",
     )
     if any(fragment not in trusted_workflow for fragment in workflow_handoff):
