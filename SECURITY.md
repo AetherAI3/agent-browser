@@ -2,12 +2,12 @@
 
 ## Supported versions
 
-Aether Browser is currently preparing its first private release candidate. Security fixes are
-made on the current `main` branch; no older release line is supported yet.
+Aether Browser is preparing its first public source release candidate. Security fixes are made
+on the current `main` branch; no older release line is supported yet.
 
 | Version | Supported |
 |---|:---:|
-| Current `main` / private v0.1 RC | Yes |
+| Current `main` / v0.1 source RC | Yes |
 | Older snapshots | No |
 
 ## Report a vulnerability

@@ -14,7 +14,11 @@ Pull-request code runs only in `.github/workflows/ci.yml` on the fixed GitHub-ho
 
 `.github/workflows/trusted-runner.yml` is the exact-main release-evidence workflow. It runs every workload job on a fresh, fixed `ubuntu-24.04` runner. A proof job first checks the default branch, `refs/heads/main`, the event SHA, and a fresh checkout; every later job checks out only that proved SHA and verifies `HEAD`. The container job starts a private rootless Podman API below `RUNNER_TEMP`, builds one immutable image, and performs SBOM, vulnerability, acceptance, and capture work in the same ephemeral VM. Independent hosted jobs validate the acceptance artifact and reproduce the documented Docker Compose quickstart. Direct pushes to `main` remain an administrative trust path and must be disabled by repository rules.
 
-The manual `aetherbrowser-staging` workflow remains a future dedicated-runner qualification path; it is not a release dependency. Grant `aetherbrowser-ci` only after uploaded smoke evidence for the exact reviewed commit is green. Never place either Browser label on a runner shared with another repository.
+The manual `.github/workflows/runner-smoke.yml` workflow targets only the exact
+`aether-vps6-browser-01` identity carrying `vps6-ci` and `aetherbrowser-staging`. It remains a
+future dedicated-runner qualification path, not a release dependency. Grant `aetherbrowser-ci`
+only after uploaded smoke evidence for the exact reviewed commit is green. Never place either
+Browser label on a runner shared with another repository.
 
 The release workflow checksum-verifies Syft `1.51.1` and Grype `0.118.0` before use. A future persistent runner must receive those exact tools from the canonical fleet provisioner rather than an ad hoc job step. The existing VPS6 qualification is host/capacity/isolation evidence only: its missing container/SBOM toolchain is not represented as a successful workload gate.
 

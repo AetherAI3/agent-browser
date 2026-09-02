@@ -1,8 +1,9 @@
 # Aether Browser launch kit
 
-> **Prepared copy only. Do not publish until the repository owner approves publication and the
-> exact-release evidence record is complete.** Repository visibility, GitHub Pages, public release,
-> and social posts remain outside the private-RC authorization.
+> **GitHub source publication is owner-approved once the exact-release evidence record is
+> complete.** Pages and social drafts are separate launch channels and should be activated only
+> as deliberate post-gate actions. Chrome-containing images, archives, and public layer caches
+> remain prohibited without separately documented redistribution authorization.
 
 ## Shared facts
 

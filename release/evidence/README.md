@@ -1,7 +1,7 @@
 # Release evidence bundle
 
-This directory is the landing zone for sanitized, commit-bound private-RC artifacts. It contains
-no generated proof yet.
+This directory is the landing zone for sanitized, commit-bound release-candidate artifacts. It
+contains no generated proof yet.
 
 For the exact candidate, place or link a manifest covering:
 
@@ -13,7 +13,7 @@ For the exact candidate, place or link a manifest covering:
 - isolated acceptance and cleanup summaries;
 - demo and poster checksums;
 - installed third-party notice bundle checksum; and
-- a statement that visibility, Pages, and launch publication remained off.
+- the repository visibility, Pages state, and publication decision at evidence capture.
 
 The canonical human-readable schema is [`../../docs/RELEASE_EVIDENCE.md`](../../docs/RELEASE_EVIDENCE.md).
 Do not add secrets, private infrastructure identifiers, or raw unredacted logs.
