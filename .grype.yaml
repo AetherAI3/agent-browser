@@ -1,0 +1,9 @@
+# Retain imprecise NVD CPE fallback matches as reviewable advisories.
+# Authoritative OS and language package findings remain blocking.
+ignore:
+  - namespace: nvd:cpe
+    fix-state: fixed
+    match-type: cpe-match
+    reason: CPE-only UnknownPackage match retained as an advisory; authoritative package findings remain blocking
+    package:
+      type: UnknownPackage

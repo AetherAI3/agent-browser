@@ -19,7 +19,7 @@ the README must continue to show the pending-capture notice.
 | Build command and run URL | Not captured |
 | Acceptance command and run URL | Not captured |
 | Aether Browser version | `0.1.0` (verify at capture) |
-| Chromium version | Not captured |
+| Google Chrome Stable executable, package version, architecture, and source | Not captured |
 | Capture date in UTC | Not captured |
 | Capture operator | Not captured |
 | `assets/demo.mp4` SHA-256 | Asset absent |

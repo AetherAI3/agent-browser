@@ -891,6 +891,7 @@ def run() -> None:
         port=settings.api_port,
         log_level="info",
         proxy_headers=False,
+        access_log=False,
     )
 
 

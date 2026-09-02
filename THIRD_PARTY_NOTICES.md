@@ -5,11 +5,18 @@ runtime and build/validation Python dependencies plus directly installed contain
 is an attribution aid, not legal advice, and it does not replace the license text shipped by each
 dependency.
 
+This source repository does not contain Google Chrome. The Dockerfile instructs Patchright to
+download and install Google Chrome Stable while an image is built. Google Chrome is separately
+licensed and is not covered by Aether's Apache-2.0 source license. Completion of notices or an
+SBOM does not itself grant permission to redistribute the Chrome executable or an image
+containing it.
+
 The exact versions in `pyproject.toml`, `requirements.lock`, the base-image digest in
 `Dockerfile`, a build SBOM, and the built image's `/usr/share/doc/*/copyright` files are the
 authoritative inventory for a particular build. Transitive packages and Patchright's downloaded
-browser payload add further notices. Do not distribute a prebuilt image until that exact
-inventory has been reviewed and the required license texts have been included.
+browser payload add further notices. Do not distribute a Chrome-containing prebuilt image without
+separately documented redistribution authorization; exact inventory review and required license
+texts remain necessary but are not themselves authorization.
 
 ## Direct runtime Python dependencies
 
@@ -51,14 +58,18 @@ remains blocked until that inventory is complete.
 
 ## Browser and display stack
 
-| Component | Upstream license information | Qualification |
+| Component | Governing terms/notices | Distribution status |
 |---|---|---|
-| Chromium | [Chromium LICENSE](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/LICENSE) (BSD 3-Clause) | Chromium bundles many third-party components; the exact browser build's credits/notices remain required. |
+| Google Chrome Stable executable | [Google Chrome Additional Terms](https://www.google.com/chrome/terms/) and [Google Terms of Service](https://policies.google.com/terms#toc-software) | Separately licensed branded software installed during the image build. Do not publish an OCI image, image archive, or reusable public layer cache containing it without separately documented redistribution authorization. |
+| Chromium-derived and other open-source components included in Chrome | Notices exposed by `chrome://credits` and the [Chromium license](https://chromium.googlesource.com/chromium/src/+/main/LICENSE) | These component licenses apply only to their identified components and do not relicense the Google Chrome executable as a whole. Preserve the exact notices corresponding to the installed package. |
 | noVNC | [noVNC LICENSE.txt](https://github.com/novnc/noVNC/blob/master/LICENSE.txt) | The distribution is mixed-license: MPL-2.0 core, BSD 2-Clause HTML/CSS, OFL-1.1 Orbitron font, CC BY-SA 3.0 images, and MIT pako as identified by upstream. Review the exact Debian payload. |
 | websockify | [websockify COPYING](https://github.com/novnc/websockify/blob/master/COPYING) (LGPL-3.0) | The installed Debian package and its dependencies control the shipped notice set. |
 | x11vnc | [x11vnc COPYING](https://github.com/LibVNC/x11vnc/blob/master/COPYING) (GPL-2.0) | Preserve the exact installed package's copyright file and corresponding source obligations. |
 | Xvfb / X.Org server | [X.Org server COPYING](https://gitlab.freedesktop.org/xorg/xserver/-/blob/master/COPYING) | X.Org server sources are multi-license; do not describe the full installed stack with one blanket license. |
 | DejaVu fonts | [DejaVu license](https://dejavu-fonts.github.io/License.html) | Font files and derived variants may carry multiple notices; inspect the exact package contents. |
+
+Google Chrome is a trademark of Google LLC. Aether is not affiliated with, sponsored by, or
+endorsed by Google.
 
 ## Direct container packages and base image
 
@@ -103,7 +114,8 @@ least:
 ## Release obligation
 
 Before any binary image publication, generate an SBOM from the exact image, record resolved
-Debian and Python package versions, archive installed copyright/license files, retain Chromium's
-third-party notices, and review reciprocal-license source and offer requirements. The private
+Debian and Python package versions, archive installed copyright/license files, retain Google
+Chrome's terms plus its Chromium and third-party notices, and review redistribution and
+reciprocal-license source/offer requirements. The private
 v0.1 RC currently targets a source release with a locally built container; this notice does not
 authorize a binary image publication.

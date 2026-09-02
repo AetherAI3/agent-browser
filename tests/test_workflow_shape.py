@@ -110,8 +110,45 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     )
     assert "AETHER_ACCEPTANCE_IMAGE_ID: ${{ steps.image_proof.outputs.image_id }}" in text
     assert text.count("bash scripts/acceptance.sh") == 1
+    assert 'grype --config .grype.yaml "sbom:artifacts/sbom.spdx.json"' in text
+    assert "--fail-on high --only-fixed --output json" in text
+    assert "> artifacts/vulnerabilities.json" in text
+    assert "> artifacts/browser-package.txt" in text
     for job in ("container", "acceptance", "quickstart", "release-integrity"):
         assert f"  {job}:\n" in text
+
+
+def test_container_browser_launcher_and_scan_advisory_are_narrowly_bound() -> None:
+    dockerfile = _read(ROOT / "Dockerfile")
+    entrypoint = _read(ROOT / "scripts" / "container-entrypoint.sh")
+    runtime = _read(ROOT / "src" / "aether_browser" / "runtime.py")
+
+    assert entrypoint.count("python -m aether_browser.main &") == 1
+    assert "aether_browser.main:app" not in entrypoint
+    assert "python -m uvicorn" not in entrypoint
+    assert "python -m patchright install --with-deps chrome" in dockerfile
+    assert "python -m patchright install --with-deps chromium" not in dockerfile
+    assert "command -v google-chrome-stable" in dockerfile
+    assert "org.opencontainers.image.licenses" not in dockerfile
+    assert "org.opencontainers.image.documentation=" in dockerfile
+    assert 'chrome_channel: str = "chrome"' in runtime
+    assert "channel=self._chrome_channel" in runtime
+
+    policy_lines = tuple(
+        line.rstrip()
+        for line in _read(ROOT / ".grype.yaml").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    )
+    assert policy_lines == (
+        "ignore:",
+        "  - namespace: nvd:cpe",
+        "    fix-state: fixed",
+        "    match-type: cpe-match",
+        "    reason: CPE-only UnknownPackage match retained as an advisory; "
+        "authoritative package findings remain blocking",
+        "    package:",
+        "      type: UnknownPackage",
+    )
 
 
 def test_staging_smoke_is_manual_exact_main_only() -> None:
