@@ -128,7 +128,11 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
+        # --tag is mandatory for a prerelease version, and latest is deliberate: it keeps
+        # "npm install aether-browser" resolving to the current candidate.
+        run: >-
+          npm publish "${{ steps.pack.outputs.tarball }}"
+          --access public --provenance --tag latest
 
       - name: Dry run summary
         if: ${{ inputs.dry_run }}
