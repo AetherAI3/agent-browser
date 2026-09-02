@@ -1,0 +1,139 @@
+name: npm-publish
+
+# Publishing is deliberate and manual. Like every other privileged workflow here, it
+# refuses to run against anything but the exact current tip of refs/heads/main, and it
+# checks out the statically trusted github.sha rather than an indirect ref.
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact 40-character commit SHA currently at refs/heads/main
+        required: true
+        type: string
+      dry_run:
+        description: Pack and verify without publishing
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-main
+  cancel-in-progress: false
+
+jobs:
+  ref-proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.proof.outputs.sha }}
+    steps:
+      - name: Checkout current main without retaining credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/main
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Prove exact current main commit
+        id: proof
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EVENT_REF: ${{ github.ref }}
+          EVENT_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -Eeuo pipefail
+          test "$DEFAULT_BRANCH" = "main"
+          test "$EVENT_REF" = "refs/heads/main"
+          test "${#EVENT_SHA}" -eq 40
+          test "${#EXPECTED_SHA}" -eq 40
+          case "$EVENT_SHA" in (*[!0-9a-f]*) exit 1 ;; esac
+          case "$EXPECTED_SHA" in (*[!0-9a-f]*) exit 1 ;; esac
+          test "$EXPECTED_SHA" = "$EVENT_SHA"
+          test "$(git rev-parse --verify HEAD^{commit})" = "$EVENT_SHA"
+          printf 'sha=%s\n' "$EVENT_SHA" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: ref-proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: npm-production
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    defaults:
+      run:
+        working-directory: clients/node
+    steps:
+      - name: Checkout proved commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # ref-proof has already asserted that github.sha is the exact refs/heads/main
+          # tip and equals the supplied expected_sha. Use github.sha here rather than the
+          # job output: it is the identical commit by construction, but it is a statically
+          # trusted ref, so a privileged run can never execute an unproved tree. The step
+          # below still cross-checks HEAD against the proved SHA.
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact checkout
+        shell: bash
+        working-directory: .
+        env:
+          TRUSTED_SHA: ${{ needs.ref-proof.outputs.sha }}
+        run: test "$(git rev-parse --verify HEAD^{commit})" = "$TRUSTED_SHA"
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "20"
+          registry-url: https://registry.npmjs.org
+
+      - name: Refuse runtime dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          deps="$(node -p "JSON.stringify(require('./package.json').dependencies || {})")"
+          test "$deps" = "{}"
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Type declarations match the implementation
+        run: |
+          npm install --no-save --no-audit --no-fund typescript@5.9.3
+          npx tsc --noEmit -p tsconfig.json
+
+      - name: Pack
+        id: pack
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rm -rf node_modules
+          tarball="$(npm pack --silent)"
+          printf 'tarball=%s\n' "$PWD/$tarball" >> "$GITHUB_OUTPUT"
+          printf 'version=%s\n' "$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          sha256sum "$tarball"
+
+      - name: Attest package provenance
+        if: ${{ !inputs.dry_run }}
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+
+      - name: Publish to npm
+        if: ${{ !inputs.dry_run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "${{ steps.pack.outputs.tarball }}" --access public --provenance
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          echo "Dry run only. Packed aether-browser ${{ steps.pack.outputs.version }}."
+          echo "Re-run with dry_run=false to publish."
