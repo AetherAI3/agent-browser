@@ -6,7 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = ROOT / ".github" / "workflows"
 GITHUB_HOSTED_RUNNER = "ubuntu-24.04"
-STAGING_RUNNER = "[self-hosted, linux, x64, aetherbrowser-staging]"
+STAGING_RUNNER = (
+    "[self-hosted, linux, x64, vps6-ci, aetherbrowser-staging, aether-vps6-browser-01]"
+)
 
 
 def _workflow_paths() -> tuple[Path, ...]:

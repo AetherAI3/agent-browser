@@ -50,7 +50,7 @@ jobs:
 
   runner-smoke:
     needs: ref-proof
-    runs-on: [self-hosted, linux, x64, aetherbrowser-staging]
+    runs-on: [self-hosted, linux, x64, vps6-ci, aetherbrowser-staging, aether-vps6-browser-01]
     timeout-minutes: 10
     steps:
       - name: Checkout proved commit
