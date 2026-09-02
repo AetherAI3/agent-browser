@@ -162,7 +162,9 @@ jobs:
           deps="$(node -p "JSON.stringify(require('./package.json').dependencies || {})")"
           test "$deps" = "{}"
       - name: Unit tests
-        run: node --test "test/*.test.js"
+        # Explicit paths rather than a glob: Node only gained glob expansion for
+        # --test in v22, and this job must keep working on the oldest supported runtime.
+        run: npm test
       - name: Type declarations match the implementation
         run: |
           npm install --no-save --no-audit --no-fund typescript@5.9.3

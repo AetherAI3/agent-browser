@@ -100,7 +100,7 @@ jobs:
           test "$deps" = "{}"
 
       - name: Unit tests
-        run: node --test "test/*.test.js"
+        run: npm test
 
       - name: Type declarations match the implementation
         run: |
