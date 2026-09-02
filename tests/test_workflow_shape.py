@@ -131,8 +131,10 @@ def test_container_browser_launcher_and_scan_advisory_are_narrowly_bound() -> No
     dockerfile = _read(ROOT / "Dockerfile")
     entrypoint = _read(ROOT / "scripts" / "container-entrypoint.sh")
     runtime = _read(ROOT / "src" / "aether_browser" / "runtime.py")
+    x11vnc_command = "x11vnc -display :99 -listen 127.0.0.1 -no6 -noipv6"
 
     assert entrypoint.count("python -m aether_browser.main &") == 1
+    assert entrypoint.count(x11vnc_command) == 1
     assert "aether_browser.main:app" not in entrypoint
     assert "python -m uvicorn" not in entrypoint
     assert "python -m patchright install --with-deps chrome" in dockerfile
