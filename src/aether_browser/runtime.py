@@ -44,7 +44,9 @@ LOGGER = logging.getLogger(__name__)
 NavigationGuard = Callable[[str], Awaitable[object] | object]
 
 
-def _browser_process_environment(profile_directory: Path) -> dict[str, str]:
+def _browser_process_environment(
+    profile_directory: Path,
+) -> dict[str, str | float | bool]:
     """Build a minimal browser environment whose writable state dies with the profile."""
 
     profile_directory.chmod(0o700)
@@ -66,7 +68,7 @@ def _browser_process_environment(profile_directory: Path) -> dict[str, str]:
         directory.chmod(0o700)
 
     locale = os.environ.get("LC_ALL") or os.environ.get("LANG") or "C.UTF-8"
-    environment = {
+    environment: dict[str, str | float | bool] = {
         "HOME": str(profile_directory),
         "LANG": locale,
         "LC_ALL": locale,
