@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-evidence-main
-  cancel-in-progress: true
+  group: release-evidence-${{ github.sha }}
+  cancel-in-progress: false
 
 env:
   PYTHONUNBUFFERED: "1"
@@ -198,7 +198,7 @@ jobs:
             --entrypoint sh "$IMAGE_ID" -c \
             'set -eu; test -x /opt/google/chrome/chrome; /opt/google/chrome/chrome --version; dpkg-query --show google-chrome-stable; dpkg --print-architecture' \
             > artifacts/browser-package.txt
-          grep -Eq '^Google Chrome [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' \
+          grep -Eq '^Google Chrome [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$' \
             artifacts/browser-package.txt
           grype --config .grype.yaml "sbom:artifacts/sbom.spdx.json" \
             --fail-on high --only-fixed --output json \
@@ -428,6 +428,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.ref-proof.outputs.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - name: Verify exact checkout
         shell: bash
@@ -487,9 +488,18 @@ jobs:
           record = {
               "artifact_sha256": files,
               "host_attestation": {
+                  "failed_scope": ["Podman", "Syft", "Grype"],
+                  "passed_scope": [
+                      "capacity",
+                      "CI-only host",
+                      "worker isolation",
+                      "cgroup bounds",
+                      "cleanup",
+                  ],
+                  "result": "partial",
                   "role": "VPS6 host and worker-isolation qualification only",
                   "run_url": "https://github.com/AetherAI3/ATSv2/actions/runs/33504063351",
-                  "toolchain_result": "not used; workload execution is ephemeral hosted",
+                  "toolchain_result": "failed; workload execution is independent and ephemeral hosted",
               },
               "image_id": os.environ["IMAGE_ID"],
               "repository": os.environ["GITHUB_REPOSITORY"],

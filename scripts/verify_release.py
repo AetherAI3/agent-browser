@@ -510,6 +510,7 @@ def _container_loopback_contract() -> tuple[bool, str]:
         "> artifacts/vulnerabilities.json",
         "> artifacts/browser-package.txt",
         "/opt/google/chrome/chrome --version",
+        r"grep -Eq '^Google Chrome [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$'",
     )
     if any(fragment not in trusted_workflow for fragment in vulnerability_scan_contract):
         issues.append("trusted workflow weakens or omits exact-image vulnerability evidence")
