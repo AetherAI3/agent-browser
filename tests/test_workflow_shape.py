@@ -89,6 +89,8 @@ def test_bounded_ci_is_github_hosted_for_every_job() -> None:
 def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() -> None:
     text = _read(WORKFLOW_DIR / "trusted-runner.yml")
 
+    assert "group: release-evidence-${{ github.sha }}" in text
+    assert "cancel-in-progress: false" in text
     assert _trigger_names(text) == {"push", "workflow_dispatch"}
     assert "    branches: [main]" in text
     assert set(_runs_on_values(text)) == {GITHUB_HOSTED_RUNNER}
@@ -115,8 +117,11 @@ def test_release_evidence_accepts_only_exact_current_main_on_hosted_runners() ->
     assert "> artifacts/vulnerabilities.json" in text
     assert "> artifacts/browser-package.txt" in text
     assert "/opt/google/chrome/chrome --version" in text
+    assert r"grep -Eq '^Google Chrome [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+[[:space:]]*$'" in text
     for job in ("container", "acceptance", "quickstart", "release-integrity"):
         assert f"  {job}:\n" in text
+    release_integrity = text.split("  release-integrity:\n", maxsplit=1)[1]
+    assert "          fetch-depth: 0\n" in release_integrity
 
 
 def test_container_browser_launcher_and_scan_advisory_are_narrowly_bound() -> None:
