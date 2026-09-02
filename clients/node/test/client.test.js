@@ -279,3 +279,18 @@ test('rejects construction when no fetch implementation exists', () => {
     globalThis.fetch = saved
   }
 })
+
+test('trims trailing slashes from the base URL without regex backtracking', () => {
+  const make = (url) => new AgentBrowser({ fetch: async () => {}, env: {}, baseUrl: url })
+  assert.equal(make('http://127.0.0.1:8092').baseUrl, 'http://127.0.0.1:8092')
+  assert.equal(make('http://127.0.0.1:8092/').baseUrl, 'http://127.0.0.1:8092')
+  assert.equal(make('http://127.0.0.1:8092///').baseUrl, 'http://127.0.0.1:8092')
+  assert.equal(make('http://127.0.0.1:8092/base/').baseUrl, 'http://127.0.0.1:8092/base')
+  assert.equal(make('///').baseUrl, '')
+
+  // A long run of slashes is linear here; the previous /\/+$/ backtracked polynomially.
+  const started = process.hrtime.bigint()
+  assert.equal(make(`http://x${'/'.repeat(60_000)}`).baseUrl, 'http://x')
+  const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6
+  assert.ok(elapsedMs < 250, `normalisation should stay linear, took ${elapsedMs.toFixed(1)}ms`)
+})
