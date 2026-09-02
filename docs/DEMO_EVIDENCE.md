@@ -22,7 +22,7 @@ asset and is not runtime proof.
 | Capture operator | Automated `release-evidence` workflow on a GitHub-hosted `ubuntu-24.04` runner; no interactive operator step |
 | `assets/demo.mp4` SHA-256 | `68cff191b83c87e3b150f3364fd4e3900a35ff4541410d753b5884ec3befd952` |
 | `assets/demo-poster.png` SHA-256 | `8ad2d324c104bf6c62b6a1d209340395bb4d0a1b24367e4f91bc5964a79c6b79` |
-| `assets/social-preview.png` and Pages-copy SHA-256 and dimensions | `4562ec4b176f97dfd6563c5f381bd7f564b8567c592d240f7f7376f79e259999`; 1280x640; `docs/assets/social-preview.png` is byte-identical |
+| `assets/social-preview.png` and Pages-copy SHA-256 and dimensions | `0f64035ad398ed7d2c0006c931d5c11ab63481bc686ebc022973cce85eb82e5c`; 1280x640; `docs/assets/social-preview.png` is byte-identical |
 
 ## How the media was produced
 
@@ -74,17 +74,21 @@ click returns.
 
 ## Social-preview provenance
 
-The preview was derived from the owner-supplied Agent Browser artwork. That artwork was
-originally committed as a JPEG carrying a painted-on transparency checkerboard and a dashed
-border, neither of which was real transparency. The committed logo is now
-`assets/agent-browser-logo.png`, SHA-256
-`fd715919bb45791c432d19e1fc82cf6d8c6cb9fdc89051b19202f3dc8f04f7dc`: an 848x904 PNG with a real
-alpha channel, the painted border removed, and the palette flattened to 64 colours to clear JPEG
-ringing. The generated 2:1 preview artwork was mechanically resized to the required 1280x640
-PNG. Its visible API panel uses only the implemented v0.1 routes, and its footer states: “Self-hosted Chrome · API control · Live human
-takeover.” `docs/assets/` contains byte-identical publication copies of the logo and preview so a
-`/docs` Pages build cannot escape its source root. The artwork depicts the product contract but is
-not itself a record of a live run.
+The committed logo is `assets/agent-browser-logo.png`, SHA-256
+`fd715919bb45791c432d19e1fc82cf6d8c6cb9fdc89051b19202f3dc8f04f7dc`. It is rebuilt from the
+owner-supplied artwork, which had previously been committed as a JPEG carrying a transparency
+checkerboard and a dashed border painted into its pixels rather than a real alpha channel. The
+committed PNG is 848x904, has a genuine alpha channel, drops the painted border, and uses a
+64-colour palette so that JPEG ringing no longer blurs the pixel-art edges.
+
+`assets/social-preview.png` is a generated 1280x640 brand card, not a screenshot and not runtime
+proof. It is composed programmatically from the committed logo plus flat vector shapes and text:
+the product name, the vendor line, the tagline, a decorative API panel, and the footer
+"Self-hosted Chrome · API control · Live human takeover". The API panel lists only routes that the
+v0.1 surface actually implements, and its "CONNECTED / 1280x800 / noVNC" strip is decorative
+styling rather than a captured session readout. `docs/assets/` holds byte-identical publication
+copies of both images so a `/docs` Pages build cannot escape its source root. The card depicts
+the product contract but is not itself a record of a live run.
 
 ## Observation record
 
