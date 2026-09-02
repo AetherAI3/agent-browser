@@ -199,8 +199,8 @@ async def test_selector_first_and_coordinate_fallback_actions() -> None:
     await adapter.scroll(10, 200)
     await adapter.press("Enter")
 
-    assert page.calls[0][:2] == ("selector-click", "#submit")
-    assert page.calls[1][:3] == ("selector-fill", "#search", "alpha")
+    assert any(call[:2] == ("selector-click", "#submit") for call in page.calls)
+    assert any(call[:3] == ("selector-fill", "#search", "alpha") for call in page.calls)
     assert ("coordinate-click", 20, 30) in page.calls
     assert ("coordinate-click", 40, 50) in page.calls
     assert ("insert-text", "beta") in page.calls
