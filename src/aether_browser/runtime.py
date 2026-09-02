@@ -495,6 +495,14 @@ class PatchrightBrowserAdapter:
                 else:
                     click_x, click_y = self._coordinates(x, y)
                     await page.mouse.click(click_x, click_y)
+                # A click can synchronously create a popup or start a download.
+                # Do not report the interaction as complete until those denial
+                # hooks have settled and the owned page is foreground again.
+                await asyncio.sleep(0)
+                await self.drain_boundary_events()
+                if not self.is_ready:
+                    raise BrowserNotReadyError("The browser is not ready.")
+                await page.bring_to_front()
         except BaseException as error:
             self._raise_operation_error(error, "Click failed.")
 
@@ -776,6 +784,9 @@ class PatchrightBrowserAdapter:
         try:
             async with asyncio.timeout(self._cleanup_timeout):
                 await page.close()
+                primary_page = self._page
+                if primary_page is not None and not primary_page.is_closed():
+                    await primary_page.bring_to_front()
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -794,9 +805,17 @@ class PatchrightBrowserAdapter:
     async def drain_boundary_events(self) -> None:
         """Wait for already-scheduled denial hooks; useful for deterministic tests."""
 
-        tasks = tuple(self._event_tasks)
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        cancellation: asyncio.CancelledError | None = None
+        while self._event_tasks:
+            tasks = asyncio.gather(*tuple(self._event_tasks), return_exceptions=True)
+            cancellation = await _drain_owned_task(tasks, cancellation)
+            if cancellation is not None:
+                # The batch that existed when cancellation arrived is settled.
+                # Later hooks remain adapter-owned, but cannot extend caller
+                # cancellation indefinitely under an event-flooding page.
+                break
+        if cancellation is not None:
+            raise cancellation
 
     def _require_page(self) -> Any:
         if not self.is_ready:
