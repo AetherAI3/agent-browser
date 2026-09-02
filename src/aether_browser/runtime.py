@@ -38,6 +38,7 @@ DEFAULT_VIEWPORT_WIDTH = 1280
 DEFAULT_VIEWPORT_HEIGHT = 720
 DEFAULT_ACTION_TIMEOUT_SECONDS = 15.0
 DEFAULT_NAVIGATION_TIMEOUT_SECONDS = 30.0
+FAILED_NAVIGATION_SETTLE_TIMEOUT_SECONDS = 2.0
 DEFAULT_LAUNCH_TIMEOUT_SECONDS = 30.0
 DEFAULT_CLEANUP_TIMEOUT_SECONDS = 10.0
 LOGGER = logging.getLogger(__name__)
@@ -320,6 +321,7 @@ class PatchrightBrowserAdapter:
         self._context: Any | None = None
         self._page: Any | None = None
         self._event_tasks: set[asyncio.Task[None]] = set()
+        self._failed_navigation_commit = asyncio.Event()
         self._blocked_navigation_error: BaseException | None = None
         self._ready = False
         self._crashed = False
@@ -420,6 +422,7 @@ class PatchrightBrowserAdapter:
         page = self._require_page()
         proxy = self._proxy
         planner_refusal_generation = proxy.planner_refusal_generation if proxy is not None else None
+        self._failed_navigation_commit.clear()
         self._blocked_navigation_error = None
         try:
             async with asyncio.timeout(self._navigation_timeout):
@@ -433,6 +436,7 @@ class PatchrightBrowserAdapter:
             blocked = self._blocked_navigation_error
             self._blocked_navigation_error = None
             if blocked is not None:
+                await self._settle_failed_navigation(page)
                 raise blocked from None
             if isinstance(error, asyncio.CancelledError):
                 raise
@@ -445,6 +449,7 @@ class PatchrightBrowserAdapter:
                 and planner_refusal_generation is not None
                 and proxy.planner_refusal_generation != planner_refusal_generation
             ):
+                await self._settle_failed_navigation(page)
                 raise BrowserDestinationBlockedError(
                     "The navigation destination was blocked."
                 ) from None
@@ -635,6 +640,27 @@ class PatchrightBrowserAdapter:
             accessibility=_parse_aria_snapshot(aria_text),
         )
 
+    async def _settle_failed_navigation(self, page: Any) -> None:
+        """Wait for Chrome's internal failure document before another command can race it."""
+
+        timeout_seconds = min(
+            self._action_timeout,
+            FAILED_NAVIGATION_SETTLE_TIMEOUT_SECONDS,
+        )
+        try:
+            async with asyncio.timeout(timeout_seconds):
+                await self._failed_navigation_commit.wait()
+                wait_for_load_state = getattr(page, "wait_for_load_state", None)
+                if callable(wait_for_load_state):
+                    await wait_for_load_state(
+                        "domcontentloaded",
+                        timeout=int(timeout_seconds * 1000),
+                    )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            return
+
     async def _route_request(self, route: Any, request: Any) -> None:
         is_navigation = False
         is_primary = False
@@ -698,6 +724,7 @@ class PatchrightBrowserAdapter:
     def _install_page_boundaries(self, page: Any) -> None:
         page.on("download", self._handle_download_event)
         page.on("popup", self._handle_new_page_event)
+        page.on("framenavigated", self._handle_frame_navigated)
         page.on("crash", self._handle_page_crash)
         page.on("close", self._handle_primary_page_close)
 
@@ -708,6 +735,17 @@ class PatchrightBrowserAdapter:
         if page is self._page:
             return
         self._schedule_event(self._close_extra_page(page))
+
+    def _handle_frame_navigated(self, frame: Any) -> None:
+        page = self._page
+        if page is None or frame != page.main_frame:
+            return
+        try:
+            scheme = urlsplit(str(frame.url)).scheme.casefold()
+        except (TypeError, ValueError):
+            return
+        if scheme == "chrome-error":
+            self._failed_navigation_commit.set()
 
     def _handle_browser_disconnect(self, *_args: object) -> None:
         if not self._closing:

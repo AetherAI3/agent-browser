@@ -281,11 +281,19 @@ async def test_proxy_planner_refusal_during_navigation_is_typed_and_sanitized() 
     proxy: Any = ProxyStub()
 
     class RefusedPage(FakePage):
+        def commit_error_page(self) -> None:
+            self.main_frame = types.SimpleNamespace(url="chrome-error://chromewebdata/")
+            adapter._handle_frame_navigated(self.main_frame)
+
         async def goto(self, _url: str, **_options: object) -> None:
             proxy.planner_refusal_generation += 1
+            asyncio.get_running_loop().call_soon(self.commit_error_page)
             raise RuntimeError("private SOCKS target detail")
 
-    adapter, _page = launched_adapter(RefusedPage())
+        async def wait_for_load_state(self, state: str, *, timeout: int) -> None:
+            self.calls.append(("wait-for-load-state", state, timeout))
+
+    adapter, page = launched_adapter(RefusedPage())
     adapter._proxy = proxy
 
     with pytest.raises(BrowserDestinationBlockedError) as raised:
@@ -293,6 +301,20 @@ async def test_proxy_planner_refusal_during_navigation_is_typed_and_sanitized() 
 
     assert raised.value.code == "DESTINATION_BLOCKED"
     assert "private" not in str(raised.value).casefold()
+    assert ("wait-for-load-state", "domcontentloaded", 1000) in page.calls
+
+
+def test_only_primary_chrome_error_navigation_settles_a_refusal() -> None:
+    adapter, page = launched_adapter()
+    frame = types.SimpleNamespace(url="https://allowed.example.org/")
+    page.main_frame = frame
+
+    adapter._handle_frame_navigated(frame)
+    assert not adapter._failed_navigation_commit.is_set()
+
+    frame.url = "chrome-error://chromewebdata/"
+    adapter._handle_frame_navigated(frame)
+    assert adapter._failed_navigation_commit.is_set()
 
 
 @pytest.mark.asyncio
