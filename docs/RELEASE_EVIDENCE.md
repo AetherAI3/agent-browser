@@ -5,7 +5,7 @@
 This document records exact-commit evidence for release candidate `v0.1.0-rc.1` of Agent Browser.
 Every field is bound to one runtime commit, one immutable image ID, and one hosted workflow run.
 
-Tested runtime commit: `0ff618ae70a9640fe1d43e893cdc15a422a5f710`
+Tested runtime commit: `2189cc6c994967ae1f17452c36878b75328831be`
 
 Release candidate: `v0.1.0-rc.1`, published as a source-only prerelease. No Chrome-containing
 image, image tar, filesystem layer, or reusable layer cache is published.
@@ -19,19 +19,19 @@ did not execute this release build; see [Host attestation scope](#host-attestati
 ## Commit-bound record
 
 Unless stated otherwise, every row below comes from `release-evidence`
-[run 33647162322](https://github.com/AetherAI3/agent-browser/actions/runs/33647162322).
+[run 33671672512](https://github.com/AetherAI3/agent-browser/actions/runs/33671672512).
 
 | Gate | Required evidence | Recorded result |
 |---|---|---|
-| Clean checkout | exact commit and clean status | `ref-proof` resolved `main` to `0ff618ae…`; every downstream job checked out and re-verified that exact SHA ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33647162322/job/100304710733)) |
-| Hosted CI | exact-commit run URL and job matrix | `ci` succeeded at `0ff618ae…`: [run 33647162378](https://github.com/AetherAI3/agent-browser/actions/runs/33647162378) |
+| Clean checkout | exact commit and clean status | `ref-proof` resolved `main` to `2189cc6c…`; every downstream job checked out and re-verified that exact SHA ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33671672512/job/100386515871)) |
+| Hosted CI | exact-commit run URL and job matrix | `ci` succeeded at `2189cc6c…`: [run 33671672468](https://github.com/AetherAI3/agent-browser/actions/runs/33671672468) |
 | Trusted runner | runner labels, exact commit, service isolation | GitHub-hosted `ubuntu-24.04`; rootless Podman API bound to a private per-job socket; acceptance ran in an isolated pod with `--network none` |
 | Static and unit checks | command, counts, and run URL | `ruff format --check`, `ruff check`, `mypy src`, and `pytest -q` all passed inside the strict gate (`quality`: "format, lint, typing, and tests passed") |
 | Dependency audit | locked input and result | `dependency-audit` PASS — locked `requirements.lock` consistency and vulnerability audit passed |
-| SBOM and vulnerability scan | artifact names and SHA-256 | Syft `1.51.1` → `sbom.spdx.json` (`a8490893da063f67b6dda5c5e89cd022f1a85018acc4e8cb48d8e918b6ff833e`, 629 packages); Grype `0.118.0` → `vulnerabilities.json` (`03928b580c3a009a5a07d551870d4ca65b44c7bc7890ef5097b4fa8e2864d056`) |
-| Rootless image build | image ID and base digest | Image ID `sha256:ebabfe0c49bca6ee452c9d9a0d3da070b7782e4e72bb58b33afec108e54475e8`; base `docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84`; final image runs as `USER 10001:10001` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33647162322/job/100304762487)) |
-| Isolated acceptance | exact image ID, network proof, cleanup proof | `acceptance.json` = PASS over 33 checks against the same image ID, including `isolated-pod-network-none`, `same-pod-namespace`, `loopback-listener-proof`, `process-cleanup`, `profile-cleanup`, and `pod-cleanup` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33647162322/job/100306362776)) |
-| README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33647162322/job/100304762567)) |
+| SBOM and vulnerability scan | artifact names and SHA-256 | Syft `1.51.1` → `sbom.spdx.json` (`63b9636a7caaa43c343a4fa76bf1bb6d84a877e6e18a5ba07993f9db163ec2bd`, 629 packages); Grype `0.118.0` → `vulnerabilities.json` (`d9d25a273837879cadb58358a52f93cd986f8f7183ffe1fa3bfe3edf24a5f080`) |
+| Rootless image build | image ID and base digest | Image ID `sha256:824e1ff94aa052674e626aa04bf05da1d74157f54996e9f52a1ec0bf91dc1c53`; base `docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84`; final image runs as `USER 10001:10001` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33671672512/job/100386570546)) |
+| Isolated acceptance | exact image ID, network proof, cleanup proof | `acceptance.json` = PASS over 33 checks against the same image ID, including `isolated-pod-network-none`, `same-pod-namespace`, `loopback-listener-proof`, `process-cleanup`, `profile-cleanup`, and `pod-cleanup` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33671672512/job/100387979608)) |
+| README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33671672512/job/100386570368)) |
 | Demo | link to `DEMO_EVIDENCE.md` | [`docs/DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md) records the generated media, its provenance, and its limits |
 | Third-party review | Chrome terms, exact package/credits, notices, and redistribution decision | `Google Chrome 152.0.7977.75`, package `google-chrome-stable 152.0.7977.75-1`, `amd64`; `installed-notices.tar.gz` (`b0ed7eadfa2872fe0a7366c871c2652282a299d0bdbc7df50b3eb8b186bf4cc7`); distribution is source-only |
 | Repository state | visibility and open-PR review | Public, with branch protection on `main` (strict, linear history; force-push and deletion disabled); no open pull request or unresolved review thread blocks this candidate |
@@ -55,7 +55,7 @@ Passing gate checks at the runtime commit: `required-core-files`, `required-sour
 
 Two commit IDs appear in this evidence and they mean different things:
 
-- **Runtime commit** `0ff618ae70a9640fe1d43e893cdc15a422a5f710` is the code under test. Every
+- **Runtime commit** `2189cc6c994967ae1f17452c36878b75328831be` is the code under test. Every
   runtime proof — the image build, isolated acceptance, quickstart, and the committed demo media —
   was produced from it.
 - **Evidence commit** is the runtime commit plus the evidence artifacts themselves. The gate
@@ -93,7 +93,7 @@ The self-hosted VPS6 qualification run is partial and is not a release-build att
 ## Closure assertions
 
 - Runtime, authority, navigation, container, CI, and documentation all refer to
-  `0ff618ae70a9640fe1d43e893cdc15a422a5f710`.
+  `2189cc6c994967ae1f17452c36878b75328831be`.
 - No required check is red or attached to another commit; the only skipped checks are the two
   declared `--skip-external` entries, each independently proven by a dedicated job.
 - No blocking fixed high-or-higher security finding and no unresolved review thread remains.

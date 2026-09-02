@@ -12,25 +12,25 @@ asset and is not runtime proof.
 
 | Field | Recorded value |
 |---|---|
-| Exact 40-character commit | `0ff618ae70a9640fe1d43e893cdc15a422a5f710` |
-| Immutable container image ID | `sha256:ebabfe0c49bca6ee452c9d9a0d3da070b7782e4e72bb58b33afec108e54475e8` |
-| Build command and run URL | Rootless `podman build` against a private per-job Podman API, `release-evidence` workflow, [container job](https://github.com/AetherAI3/agent-browser/actions/runs/33647162322/job/100304762487) |
-| Acceptance command and run URL | Isolated exact-image acceptance in a `--network none` pod, same run, [acceptance job](https://github.com/AetherAI3/agent-browser/actions/runs/33647162322/job/100306362776) |
+| Exact 40-character commit | `2189cc6c994967ae1f17452c36878b75328831be` |
+| Immutable container image ID | `sha256:824e1ff94aa052674e626aa04bf05da1d74157f54996e9f52a1ec0bf91dc1c53` |
+| Build command and run URL | Rootless `podman build` against a private per-job Podman API, `release-evidence` workflow, [container job](https://github.com/AetherAI3/agent-browser/actions/runs/33671672512/job/100386570546) |
+| Acceptance command and run URL | Isolated exact-image acceptance in a `--network none` pod, same run, [acceptance job](https://github.com/AetherAI3/agent-browser/actions/runs/33671672512/job/100387979608) |
 | Agent Browser version | `0.1.0` (agreed across project, package, Compose, and image label at this commit) |
 | Google Chrome Stable executable, package version, architecture, and source | `/opt/google/chrome/chrome`, `Google Chrome 152.0.7977.75`, package `google-chrome-stable 152.0.7977.75-1`, `amd64`, installed in-image via `patchright install --with-deps chrome` |
-| Capture date in UTC | 2026-09-02, 15:17:43Z to 15:18:02Z |
+| Capture date in UTC | 2026-09-02, 19:14:09Z to 19:14:28Z |
 | Capture operator | Automated `release-evidence` workflow on a GitHub-hosted `ubuntu-24.04` runner; no interactive operator step |
-| `assets/demo.mp4` SHA-256 | `ab4f91a9af4eb7c16e609d01f3f53ac76a2a523cbf6d2ec437648645fffd9bc0` |
-| `assets/demo-poster.png` SHA-256 | `d025cea4f5dc6c9d018ddc16f08e34876f3eea4df1617eb51e6a2ea4a8ee1207` |
+| `assets/demo.mp4` SHA-256 | `cc58d06371c2a7b31388fe24923b60d01b1cac039a93aac80104834c035de1f7` |
+| `assets/demo-poster.png` SHA-256 | `3644900d9f7820c9a1f162f5b628882cb5971a5ad3c94599c7a2965fd0f936c8` |
 | `assets/social-preview.png` and Pages-copy SHA-256 and dimensions | `e3473f97af387d28bed32e8959873b79175ccc305e17dfa7aa310ef1e9329556`; 1280x640; `docs/assets/social-preview.png` is byte-identical |
 
 ## How the media was produced
 
 Two real frames were taken during the isolated acceptance run against the exact image:
 
-- `demo-frames/api-before.png` (`ef816cc3686740f3359aeea892c8d938aa64baea644ced38710d1936d987a69d`) —
+- `demo-frames/api-before.png` (`1f669232d257141b86836a34084d86bccd410880a10ce1431fae0ff347111a68`) —
   the page as returned through the control API, before the interaction batch.
-- `demo-frames/display-after.png` (`d025cea4f5dc6c9d018ddc16f08e34876f3eea4df1617eb51e6a2ea4a8ee1207`) —
+- `demo-frames/display-after.png` (`3644900d9f7820c9a1f162f5b628882cb5971a5ad3c94599c7a2965fd0f936c8`) —
   an X11 screenshot of the container display, after the interaction batch.
 
 `assets/demo-poster.png` is a byte-identical copy of `demo-frames/display-after.png`.
@@ -44,9 +44,9 @@ committed files byte for byte.
 ## What the frames show
 
 Both frames render the same deterministic release fixture, served over container loopback at
-`127.0.0.1:18080`, with the same generated nonce `visual-proof-0bcaec8f409c4887dbfe2d9f85ef1472`
-and the same generated proof color `#70468e`. `acceptance.json` records that color and the nonce
-digest `e0165e64fe62477c39d9c7967aae34ed737d431d64eb82a4783b2011ce5b0a50`, which is how the
+`127.0.0.1:18080`, with the same generated nonce `visual-proof-18830f048f84f48cb7fcd38f4a87b18c`
+and the same generated proof color `#b3c9be`. `acceptance.json` records that color and the nonce
+digest `83998e6a225fda51f362c36042d069ee752c71613b5d114a99ad38ea042836f5`, which is how the
 same-display check is bound to this run rather than to a stock page.
 
 In `display-after.png` the owned fixture page is the active, foregrounded tab; the button reads
