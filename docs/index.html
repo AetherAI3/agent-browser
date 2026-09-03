@@ -3,40 +3,57 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Agent Browser is self-hosted Google Chrome for AI agents with API control, structured state, a live noVNC view, and human takeover.">
+    <meta name="description" content="Agent Browser is self-hosted Google Chrome for AI agents: API control, structured state, an MCP server, and a live noVNC view a human can take over.">
     <meta property="og:title" content="Agent Browser — See what your agent sees.">
-    <meta property="og:description" content="Self-hosted Chrome · API control · Live human takeover">
+    <meta property="og:description" content="Self-hosted Chrome · MCP server · Live human takeover">
     <meta property="og:url" content="https://aetherai3.github.io/agent-browser/">
     <meta property="og:image" content="https://aetherai3.github.io/agent-browser/assets/social-preview.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Agent Browser by Aether AI">
     <meta name="twitter:title" content="Agent Browser — See what your agent sees.">
-    <meta name="twitter:description" content="Self-hosted Chrome · API control · Live human takeover">
+    <meta name="twitter:description" content="Self-hosted Chrome · MCP server · Live human takeover">
     <link rel="canonical" href="https://aetherai3.github.io/agent-browser/">
     <link rel="icon" href="assets/agent-browser-logo.png" type="image/png">
     <meta name="twitter:image" content="https://aetherai3.github.io/agent-browser/assets/social-preview.png">
     <title>Agent Browser — See what your agent sees.</title>
     <style>
-      :root { color-scheme: light; --ink: #0d2444; --aqua: #22dbe4; --blue: #2789bd; --green: #83d174; --paper: #f7f4e8; }
+      :root {
+        color-scheme: light dark;
+        --ink: #0d2444; --aqua: #22dbe4; --blue: #2789bd; --green: #83d174; --paper: #f7f4e8;
+        --card: rgba(255,255,255,.84); --panel: #ffffff; --body: #29445f; --foot: #40566a;
+        --bg: radial-gradient(circle at 50% 0, #fff 0, var(--paper) 55%, #d7e7df 100%);
+        --frame: #0d0d0d;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #d8ecff; --aqua: #1c9aa1; --blue: #4aa9dd; --green: #4e8f43; --paper: #0b1526;
+          --card: rgba(255,255,255,.05); --panel: #101d31; --body: #a8bfd6; --foot: #8ba2b9;
+          --bg: radial-gradient(circle at 50% 0, #16273f 0, #0b1526 55%, #060d18 100%);
+          --frame: #d8ecff;
+        }
+      }
       * { box-sizing: border-box; }
-      body { margin: 0; color: var(--ink); background: radial-gradient(circle at 50% 0, #fff 0, var(--paper) 55%, #d7e7df 100%); font: 17px/1.6 system-ui, sans-serif; }
+      body { margin: 0; color: var(--ink); background: var(--bg); font: 17px/1.6 system-ui, sans-serif; }
       main { width: min(1040px, calc(100% - 32px)); margin: 0 auto; padding: 52px 0 72px; }
       .hero { text-align: center; }
-      .logo { width: min(215px, 60vw); border: 6px solid #0d0d0d; box-shadow: 10px 10px 0 rgba(13, 36, 68, .18); }
+      .logo { width: min(180px, 52vw); border: 6px solid var(--frame); box-shadow: 10px 10px 0 rgba(13, 36, 68, .18); }
       h1 { margin: 28px 0 0; font-size: clamp(3rem, 9vw, 6.4rem); line-height: .95; letter-spacing: -.07em; }
       .tagline { margin: 18px auto 8px; font-size: clamp(1.35rem, 3vw, 2rem); font-weight: 750; }
-      .lede { max-width: 760px; margin: 0 auto; color: #29445f; }
+      .lede { max-width: 760px; margin: 0 auto; color: var(--body); }
       .actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 28px 0 44px; }
-      .button { padding: 11px 17px; border: 3px solid var(--ink); color: var(--ink); background: white; font-weight: 800; text-decoration: none; box-shadow: 5px 5px 0 var(--aqua); }
-      .button.primary { color: white; background: var(--ink); }
+      .button { padding: 11px 17px; border: 3px solid var(--ink); color: var(--ink); background: var(--panel); font-weight: 800; text-decoration: none; box-shadow: 5px 5px 0 var(--aqua); }
+      .button.primary { color: var(--panel); background: var(--ink); }
       .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin: 34px 0; }
-      .card { padding: 22px; border: 3px solid var(--ink); background: rgba(255,255,255,.84); }
+      .card { padding: 22px; border: 3px solid var(--ink); background: var(--card); }
       .card h2 { margin: 0 0 8px; font-size: 1.15rem; }
       pre { overflow-x: auto; padding: 20px; border: 3px solid var(--ink); color: #e9ffff; background: #071b33; box-shadow: 8px 8px 0 var(--green); }
       code { font: .92em ui-monospace, SFMono-Regular, Consolas, monospace; }
-      .boundary { padding: 20px 24px; border-left: 8px solid var(--blue); background: white; }
-      footer { margin-top: 46px; text-align: center; font-size: .95rem; color: #40566a; }
+      .demo { margin: 8px auto 40px; text-align: center; }
+      .demo img { width: 100%; max-width: 860px; border: 4px solid var(--frame); box-shadow: 10px 10px 0 var(--aqua); }
+      .demo figcaption { max-width: 700px; margin: 16px auto 0; font-size: .95rem; color: var(--body); }
+      .boundary { padding: 20px 24px; border-left: 8px solid var(--blue); background: var(--panel); }
+      footer { margin-top: 46px; text-align: center; font-size: .95rem; color: var(--foot); }
       footer a { color: inherit; }
     </style>
   </head>
@@ -46,20 +63,26 @@
         <img class="logo" src="assets/agent-browser-logo.png" alt="Pixel-art computer displaying a globe and pointer, the Agent Browser logo">
         <h1>Agent Browser</h1>
         <p class="tagline">See what your agent sees.</p>
-        <p class="lede">Run one headed Google Chrome Stable session on infrastructure you control. Agents use a bounded JSON API while a human watches or takes over the same local display through noVNC.</p>
+        <p class="lede">One headed Google Chrome session, on hardware you control. Your agent drives it through a small JSON API — or through MCP — while you watch the same session over noVNC and take over whenever you want.</p>
         <nav class="actions" aria-label="Project links">
           <a class="button primary" href="https://github.com/AetherAI3/agent-browser#quickstart">Start locally</a>
-          <a class="button" href="API.md">Read the API</a>
-          <a class="button" href="SECURITY.md">Security model</a>
-          <a class="button" href="https://www.npmjs.com/package/aether-browser">npm client</a>
-          <a class="button" href="RELEASE_EVIDENCE.md">Release evidence</a>
+          <a class="button" href="https://github.com/AetherAI3/agent-browser/blob/main/docs/MCP.md">Use it from MCP</a>
+          <a class="button" href="https://github.com/AetherAI3/agent-browser/blob/main/docs/API.md">Read the API</a>
+          <a class="button" href="https://github.com/AetherAI3/agent-browser/blob/main/docs/SECURITY.md">Security model</a>
+          <a class="button" href="https://github.com/AetherAI3/agent-browser">GitHub</a>
         </nav>
       </section>
+
+      <figure class="demo">
+        <img src="assets/demo.gif" alt="An agent signs in through the Agent Browser JSON API, stops at a two-factor prompt it cannot answer, a human takes over the same live session and types the code, and the agent resumes and reads the dashboard" width="860">
+        <figcaption>A real 18-second run. The agent signs in, reaches a 2FA prompt it has no way to answer, and stops. A human types the code into <strong>that same live session</strong> and hands it straight back.</figcaption>
+      </figure>
 
       <section class="grid" aria-label="Core capabilities">
         <article class="card"><h2>API control</h2><p>Create, navigate, inspect, click, type, scroll, press, and end through closed request models.</p></article>
         <article class="card"><h2>Structured state</h2><p>Use bounded text and accessibility data before spending a vision step on a PNG snapshot.</p></article>
         <article class="card"><h2>Shared live view</h2><p>Watch the exact headed session through numeric-loopback noVNC, with local human takeover.</p></article>
+        <article class="card"><h2>MCP server</h2><p>Nine stdio tools from either client, so Claude Code, Claude Desktop, Cursor and Windsurf drive the session you are watching.</p></article>
         <article class="card"><h2>Narrow boundary</h2><p>No shell, arbitrary JavaScript, raw DevTools, credential import, or wildcard listener.</p></article>
       </section>
 
@@ -67,14 +90,18 @@
       <pre><code># start the runtime
 docker compose up --build
 
-# drive it from TypeScript
-npm install aether-browser
-
-# API health
+# check it is up
 curl -fsS http://127.0.0.1:8092/browser/health
 
-# live browser view
-http://127.0.0.1:6080/vnc.html</code></pre>
+# then watch the live browser at
+# http://127.0.0.1:6080/vnc.html</code></pre>
+
+      <h2>Then reach it however you like</h2>
+      <pre><code>npm install aether-browser    # TypeScript
+pip install aether-browser    # Python
+
+# or from any MCP client
+claude mcp add agent-browser -- npx -y aether-browser mcp</code></pre>
 
       <p class="boundary"><strong>Release boundary:</strong> Agent Browser is self-hosted software, not a hosted browser service. The v0.x noVNC surface is unauthenticated and must remain on numeric loopback. Review the security model before changing the deployment shape.</p>
 
