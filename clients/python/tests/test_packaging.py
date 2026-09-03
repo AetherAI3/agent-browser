@@ -1,7 +1,8 @@
 """The two clients are one release in two ecosystems, so their metadata must agree.
 
-npm and PyPI spell a release candidate differently (`0.1.0-rc.1` vs `0.1.0rc1`), so the
-comparison normalises rather than demanding an identical string.
+npm and PyPI spell a prerelease differently (`0.1.0-rc.1` vs `0.1.0rc1`), so the comparison
+normalises rather than demanding an identical string. It costs nothing on a final version and
+keeps working on the next candidate.
 """
 
 from __future__ import annotations

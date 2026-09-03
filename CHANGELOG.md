@@ -6,6 +6,10 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-03
+
+First stable release of the `v1` API contract and both clients.
+
 ### Added
 
 - Python client and CLI in `clients/python`, published to PyPI as `aether-browser` — the same
@@ -18,6 +22,12 @@ All notable changes to Agent Browser are recorded here. The format follows
 - `python-client` CI job covering unit tests, strict typing, wheel contents, and a server-free CLI
   run. Its packaging tests read `clients/node/package.json`, so a version or command that drifts
   between the two clients fails in CI rather than on a registry.
+
+### Changed
+
+- Both clients leave the release-candidate line: npm `0.1.0-rc.1` and PyPI `0.1.0rc1` become
+  `0.1.0`, so `npm install aether-browser` and `pip install aether-browser` need no prerelease
+  flag. The CLI's `up` now fetches the `v0.1.0` source tag.
 
 ## [0.1.0-rc.1] - 2026-09-02
 
@@ -55,5 +65,6 @@ release and it carries the final naming throughout.
   fixed high-or-higher findings, not an absence of vulnerabilities; see
   [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) for the full posture.
 
-[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.1.0-rc.1...HEAD
+[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.1.0
 [0.1.0-rc.1]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.1.0-rc.1

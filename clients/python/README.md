@@ -5,12 +5,10 @@ self-hosted Chrome for AI agents. Drive one browser session through a closed HTT
 take over that exact same session through noVNC.
 
 ```bash
-pip install --pre aether-browser
+pip install aether-browser
 ```
 
 Zero runtime dependencies. Ships type hints (`py.typed`). Python 3.10+.
-
-`--pre` is required while this tracks a release candidate; it drops once `0.1.0` ships.
 
 This is the Python sibling of the [`aether-browser` npm package](https://www.npmjs.com/package/aether-browser):
 same name, same commands, same closed `v1` contract, released version for version.
@@ -121,9 +119,8 @@ rejects unknown fields.
 
 ## Status
 
-`0.1.0rc1` is the same release as the npm client's `0.1.0-rc.1`, and tracks Agent Browser
-`v0.1.0-rc.1` and its `api_version: "v1"` contract. This is a release candidate: the API may change
-before `0.1.0`. Issues and design discussion are welcome on
+`0.1.0` tracks Agent Browser `v0.1.0` and its `api_version: "v1"` contract, and is released
+version for version with the npm client. Issues and design discussion are welcome on
 [the repository](https://github.com/AetherAI3/agent-browser/issues).
 
 Apache-2.0 · [Aether AI](https://github.com/AetherAI3)

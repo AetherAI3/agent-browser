@@ -3,12 +3,11 @@ requires = ["hatchling==1.28.0"]
 build-backend = "hatchling.build"
 
 # The Python sibling of the `aether-browser` npm package. Same name, same commands, same
-# closed v1 contract; the version tracks the npm client exactly (0.1.0-rc.1 there is
-# 0.1.0rc1 here, the same release under PEP 440 normalisation) and
+# closed v1 contract; the version tracks the npm client exactly, and
 # tests/test_packaging.py fails the build if the two ever drift apart.
 [project]
 name = "aether-browser"
-version = "0.1.0rc1"
+version = "0.1.0"
 description = "Client and CLI for Agent Browser by Aether AI: drive one self-hosted Chrome session over a closed HTTP API and watch or take over that same session through noVNC."
 readme = "README.md"
 requires-python = ">=3.10"
