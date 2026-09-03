@@ -107,6 +107,21 @@ jobs:
           npm install --no-save --no-audit --no-fund typescript@5.9.3
           npx tsc --noEmit -p tsconfig.json
 
+      # Both earlier publish attempts died on credentials, not on the package: first an
+      # OTP demand, then a 404 on PUT because a granular token cannot create a new package.
+      # Prove the credential before doing any work, so a bad token fails here with a clear
+      # message instead of after the tests and pack. This also gives the dry run something
+      # real to assert rather than never touching the registry at all.
+      - name: Verify registry credential
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          who="$(npm whoami)"
+          test -n "$who"
+          echo "authenticated to https://registry.npmjs.org as $who"
+
       - name: Pack
         id: pack
         shell: bash
