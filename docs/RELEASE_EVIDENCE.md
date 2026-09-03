@@ -2,14 +2,15 @@
 
 ## Status
 
-This document records exact-commit evidence for release `v0.1.0` of Agent Browser.
+This document records exact-commit evidence for release `v0.2.0` of Agent Browser.
 Every field is bound to one runtime commit, one immutable image ID, and one hosted workflow run.
 
-Tested runtime commit: `02ee77bf75c1d27da156528ea5e4f18fc842dfc1`
+Tested runtime commit: `22e1433369cc4d15cc00c6c19193de2c4a9ded21`
 
-Release: `v0.1.0`, published source-only. No Chrome-containing image, image tar, filesystem
-layer, or reusable layer cache is published. The preceding candidate `v0.1.0-rc.1` keeps its own
-tag and its own evidence in the repository history.
+Release: `v0.2.0`, published source-only. No Chrome-containing image, image tar, filesystem
+layer, or reusable layer cache is published. The preceding releases `v0.1.0` and `v0.1.0-rc.1` keep
+their own tags and their own evidence in the repository history; this record supersedes them and
+does not restate their figures.
 
 ## Execution environment
 
@@ -20,22 +21,22 @@ did not execute this release build; see [Host attestation scope](#host-attestati
 ## Commit-bound record
 
 Unless stated otherwise, every row below comes from `release-evidence`
-[run 33795812985](https://github.com/AetherAI3/agent-browser/actions/runs/33795812985).
+[run 33809057926](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926).
 
 | Gate | Required evidence | Recorded result |
 |---|---|---|
-| Clean checkout | exact commit and clean status | `ref-proof` resolved `main` to `02ee77bf…`; every downstream job checked out and re-verified that exact SHA ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33795812985/job/100783114131)) |
-| Hosted CI | exact-commit run URL and job matrix | `ci` succeeded at `02ee77bf…`: [run 33795812997](https://github.com/AetherAI3/agent-browser/actions/runs/33795812997) |
+| Clean checkout | exact commit and clean status | `ref-proof` resolved `main` to `22e14333…`; every downstream job checked out and re-verified that exact SHA ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926/job/100826351952)) |
+| Hosted CI | exact-commit run URL and job matrix | `ci` succeeded at `22e14333…`: [run 33809057945](https://github.com/AetherAI3/agent-browser/actions/runs/33809057945) |
 | Trusted runner | runner labels, exact commit, service isolation | GitHub-hosted `ubuntu-24.04`; rootless Podman API bound to a private per-job socket; acceptance ran in an isolated pod with `--network none` |
 | Static and unit checks | command, counts, and run URL | `ruff format --check`, `ruff check`, `mypy src`, and `pytest -q` all passed inside the strict gate (`quality`: "format, lint, typing, and tests passed") |
 | Dependency audit | locked input and result | `dependency-audit` PASS — locked `requirements.lock` consistency and vulnerability audit passed |
-| SBOM and vulnerability scan | artifact names and SHA-256 | Syft `1.51.1` → `sbom.spdx.json` (`282a4b9ac8b709d48b932473413a3ca5b5208268c46637977dfd698c46b86af1`, 630 packages); Grype `0.118.0` → `vulnerabilities.json` (`cb04d9b10ce1ca34b4dc28dd17874d48bf98339ac9f15dcf595311ce9bd212df`) |
-| Rootless image build | image ID and base digest | Image ID `sha256:8b6032816c9f243b481862d388a1f1eb75cd0a3c921ad0f0e0e956c48d103cf7`; base `docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84`; final image runs as `USER 10001:10001` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33795812985/job/100783149548)) |
-| Isolated acceptance | exact image ID, network proof, cleanup proof | `acceptance.json` = PASS over 33 checks against the same image ID, including `isolated-pod-network-none`, `same-pod-namespace`, `loopback-listener-proof`, `process-cleanup`, `profile-cleanup`, and `pod-cleanup` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33795812985/job/100784604199)) |
-| README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33795812985/job/100783149632)) |
+| SBOM and vulnerability scan | artifact names and SHA-256 | Syft `1.51.1` → `sbom.spdx.json` (`6db950200b9551f6d42d24b851a1e7e456f62a0ae1564fbf8fff9d4b48d5f5fa`, 630 packages); Grype `0.118.0` → `vulnerabilities.json` (`c0154b3c62f2887c19b306a658d9338eee94ed2a21656b1d431bfd73d4134bf5`) |
+| Rootless image build | image ID and base digest | Image ID `sha256:847628dd478a68ebbfc2d39e501507fdd91c792f70c09c73b9ce119f6fd581a5`; base `docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84`; final image runs as `USER 10001:10001` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926/job/100826413501)) |
+| Isolated acceptance | exact image ID, network proof, cleanup proof | `acceptance.json` = PASS over 33 checks against the same image ID, including `isolated-pod-network-none`, `same-pod-namespace`, `loopback-listener-proof`, `same-display-color-proof`, `process-cleanup`, `profile-cleanup`, and `pod-cleanup` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926/job/100827682025)) |
+| README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926/job/100826413124)) |
 | Demo | link to `DEMO_EVIDENCE.md` | [`docs/DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md) records the generated media, its provenance, and its limits |
-| Third-party review | Chrome terms, exact package/credits, notices, and redistribution decision | `Google Chrome 152.0.7977.82`, package `google-chrome-stable 152.0.7977.82-1`, `amd64`; `installed-notices.tar.gz` (`13a2948fd99f10e6445101d631d02a53b43c3e3676db458947ca543739ee7b79`); distribution is source-only |
-| Repository state | visibility and open-PR review | Public, with branch protection on `main` (strict, linear history; force-push and deletion disabled); no open pull request or unresolved review thread blocks this candidate |
+| Third-party review | Chrome terms, exact package/credits, notices, and redistribution decision | `Google Chrome 152.0.7977.82`, package `google-chrome-stable 152.0.7977.82-1`, `amd64`; `installed-notices.tar.gz` (`13a2948fd99f10e6445101d631d02a53b43c3e3676db458947ca543739ee7b79`, byte-identical to the 0.1.0 bundle); distribution is source-only |
+| Repository state | visibility and open-PR review | Public, with branch protection on `main` (strict, linear history; force-push and deletion disabled); no open pull request or unresolved review thread blocks this release |
 
 ## Strict repository gate
 
@@ -47,7 +48,7 @@ evidence still named the previous runtime commit. The two skips are the delibera
 `container` and `acceptance` jobs prove independently against the exact image ID.
 
 Passing gate checks at the runtime commit: `required-core-files`, `required-source-modules`,
-`version-agreement` (`0.1.0` across project, package, Compose, and image label), `secret-scan`,
+`version-agreement` (`0.2.0` across project, package, Compose, and image label), `secret-scan`,
 `private-infrastructure-scan`, `excluded-domain-scan`, `credential-injection-scan`,
 `container-loopback-contract`, `required-release-files`, `readme-integrity`, `asset-integrity`,
 `unsupported-claims`, `quality`, and `dependency-audit`.
@@ -56,7 +57,7 @@ Passing gate checks at the runtime commit: `required-core-files`, `required-sour
 
 Two commit IDs appear in this evidence and they mean different things:
 
-- **Runtime commit** `02ee77bf75c1d27da156528ea5e4f18fc842dfc1` is the code under test. Every
+- **Runtime commit** `22e1433369cc4d15cc00c6c19193de2c4a9ded21` is the code under test. Every
   runtime proof — the image build, isolated acceptance, quickstart, and the committed demo media —
   was produced from it.
 - **Evidence commit** is the runtime commit plus the evidence artifacts themselves. The gate
@@ -77,10 +78,14 @@ The machine-readable attestation from the closing run is committed at
 ## Vulnerability posture
 
 Grype ran against the exact image with `--fail-on high --only-fixed` and did not block the build:
-there are no fixed high-or-higher findings. This is not a claim that the image is free of
-vulnerabilities. `vulnerabilities.json` records the full match set; of its 878 findings, 12 carry an
-available fix, 531 have no released fix, and 330 are marked will-not-fix by the Debian-derived
-base. Consumers should re-scan any image they build and apply their own risk policy.
+its reportable match set is empty, so there are no fixed high-or-higher findings. This is not a
+claim that the image is free of vulnerabilities. `vulnerabilities.json` records the full set; of its
+878 findings, 12 carry an available fix, 531 have no released fix, 330 are marked will-not-fix by
+the Debian-derived base, and 5 report no fix state. By severity: 42 critical, 161 high, 289 medium,
+57 low, 290 negligible, 39 unknown. These counts are unchanged from `0.1.0` because the base image
+digest, the hash-locked Python environment, and the Chrome package version are all pinned and did
+not move between the two releases. Consumers should re-scan any image they build and apply their
+own risk policy.
 
 ## Host attestation scope
 
@@ -94,15 +99,17 @@ The self-hosted VPS6 qualification run is partial and is not a release-build att
 ## Closure assertions
 
 - Runtime, authority, navigation, container, CI, and documentation all refer to
-  `02ee77bf75c1d27da156528ea5e4f18fc842dfc1`.
+  `22e1433369cc4d15cc00c6c19193de2c4a9ded21`.
 - No required check is red or attached to another commit; the only skipped checks are the two
   declared `--skip-external` entries, each independently proven by a dedicated job.
 - No blocking fixed high-or-higher security finding and no unresolved review thread remains.
 - The source release reproduces the documented Linux Compose quickstart.
-- The committed demo media was generated from the exact accepted image at runtime commit
-  `e9a9000700e2dc4d1c11724be3ee8894a2709436` and has recorded checksums. This run regenerated its
-  own frames from its own image and left the committed media untouched, so the media is evidence
-  of the capture it names and is not re-attributed to this commit.
+- The committed demo media changed in `0.2.0`. It is no longer the workflow-generated montage the
+  `0.1.0` record described; it is a continuous screen recording of a real run, and its capture
+  method, provenance, and limits are recorded in [`DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md). This
+  release run regenerated its own frames from its own image and left the committed media untouched,
+  so the media remains evidence of the capture it names and is not re-attributed to this commit or
+  to this run.
 - Chrome-containing image, image-tar, and public layer-cache publication remain off. The SBOM and
   notice bundle are inventory evidence and do not by themselves grant redistribution authorization.
 - Artifact existence alone is not treated as success; each job conclusion and the strict-gate
