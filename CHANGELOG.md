@@ -6,6 +6,19 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Python client and CLI in `clients/python`, published to PyPI as `aether-browser` — the same
+  distribution name, commands, and closed `v1` contract as the npm client, released version for
+  version with it (`0.1.0rc1` is npm's `0.1.0-rc.1`). No runtime dependencies: the transport is
+  `urllib` from the standard library. Requires Python 3.10 or newer.
+- `pypi-publish.yml`, the exact sibling of `npm-publish.yml`: manual dispatch, the same
+  exact-current-main ref proof, a default dry run, and PyPI Trusted Publishing (OIDC) instead of a
+  stored token.
+- `python-client` CI job covering unit tests, strict typing, wheel contents, and a server-free CLI
+  run. Its packaging tests read `clients/node/package.json`, so a version or command that drifts
+  between the two clients fails in CI rather than on a registry.
+
 ## [0.1.0-rc.1] - 2026-09-02
 
 First public, source-only release candidate, published as **Agent Browser by Aether AI**.

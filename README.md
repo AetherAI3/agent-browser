@@ -14,6 +14,7 @@
 <p align="center">
   <a href="https://github.com/AetherAI3/agent-browser/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/AetherAI3/agent-browser/actions/workflows/ci.yml/badge.svg"></a>
   <a href="https://www.npmjs.com/package/aether-browser"><img alt="npm: aether-browser" src="https://img.shields.io/npm/v/aether-browser?color=cb3837&label=npm%3A%20aether-browser"></a>
+  <a href="https://pypi.org/project/aether-browser/"><img alt="PyPI: aether-browser" src="https://img.shields.io/pypi/v/aether-browser?color=3775a9&label=PyPI%3A%20aether-browser"></a>
   <a href="LICENSE"><img alt="Source license: Apache-2.0" src="https://img.shields.io/badge/source%20license-Apache--2.0-0b7285"></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
   <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ed">
@@ -26,6 +27,7 @@
   <a href="docs/SECURITY.md">Security model</a> ·
   <a href="CONTRIBUTING.md">Contributing</a> ·
   <a href="clients/node/README.md">Node client</a> ·
+  <a href="clients/python/README.md">Python client</a> ·
   <a href="CHANGELOG.md">Changelog</a> ·
   <a href="docs/RELEASE_EVIDENCE.md">Release status</a>
 </p>
@@ -41,8 +43,9 @@ agent gets stuck, you take over in the window it is already using — no second 
 no reconstructing what it saw.
 
 ```bash
-docker compose up --build          # start the runtime
+docker compose up --build           # start the runtime
 npm install aether-browser          # drive it from TypeScript
+pip install --pre aether-browser    # or from Python
 ```
 
 ### Exact-release demo
@@ -138,6 +141,37 @@ reports what is missing before a first run, and `up` builds and starts the runti
 
 See [`clients/node/README.md`](clients/node/README.md).
 
+## Python client
+
+The same client, same name, same commands, released version for version with the npm package:
+
+```bash
+pip install --pre aether-browser
+```
+
+```python
+import os
+
+from aether_browser import AgentBrowser, session
+
+browser = AgentBrowser(controller_token=os.environ["AGENT_BROWSER_CONTROLLER_TOKEN"])
+
+with session(browser) as live:
+    page = live.navigate("https://example.com")
+    live.click(selector="#login")
+    live.type("ada", selector="#user")
+    print(page["title"], live.view_url)
+```
+
+The `session` context manager always attempts to end the session, including when the body raises.
+The package has no runtime dependencies -- the transport is `urllib` from the standard library --
+ships type hints, and runs on Python 3.10 or newer, on any platform that can reach the server. It
+installs the same CLI as the npm package: `aether-browser doctor`, `up`, `status`, `open`, `down`.
+
+`--pre` is required while both clients track a release candidate; it drops once `0.1.0` ships.
+
+See [`clients/python/README.md`](clients/python/README.md).
+
 ## What happened
 
 1. `session/create` started one headed Chrome session and returned its UUID plus the local noVNC
@@ -226,19 +260,19 @@ and credential injection are excluded from the public core. Provenance status is
 
 ## Roadmap
 
-**Shipped.** The TypeScript client and CLI are published as
-[`aether-browser`](https://www.npmjs.com/package/aether-browser) on npm and live in
-[`clients/node`](clients/node).
+**Shipped.** Both clients and their CLI are published under the name `aether-browser`:
+[on npm](https://www.npmjs.com/package/aether-browser) from [`clients/node`](clients/node), and
+[on PyPI](https://pypi.org/project/aether-browser/) from [`clients/python`](clients/python). The
+Python context-manager SDK that was roadmap item 1 is part of that release.
 
-Three separable contribution tracks remain open, each with an issue:
+Two separable contribution tracks remain open, each with an issue:
 
-1. [Python context-manager SDK](https://github.com/AetherAI3/agent-browser/issues/13).
-2. [Multi-session worker pool](https://github.com/AetherAI3/agent-browser/issues/14) with explicit
+1. [Multi-session worker pool](https://github.com/AetherAI3/agent-browser/issues/14) with explicit
    isolation and capacity semantics.
-3. [Session trace and recording export](https://github.com/AetherAI3/agent-browser/issues/15) with
+2. [Session trace and recording export](https://github.com/AetherAI3/agent-browser/issues/15) with
    clear privacy controls.
 
-These three are roadmap candidates, not shipped features.
+These two are roadmap candidates, not shipped features.
 
 ## Contributing
 

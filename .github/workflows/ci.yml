@@ -187,3 +187,60 @@ jobs:
           '
       - name: CLI runs without a server present
         run: node src/cli.js --version && node src/cli.js help
+
+  python-client:
+    needs: change-map
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: clients/python
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          # The floor declared by requires-python, so the published wheel is proved on the
+          # oldest interpreter it claims to support rather than only on a modern one.
+          python-version: "3.10"
+      - name: Refuse runtime dependencies
+        run: grep -qx 'dependencies = \[\]' pyproject.toml
+      - name: Unit tests
+        # tests/test_packaging.py reads clients/node/package.json, so a version or command
+        # that drifts between the two clients fails here rather than on PyPI.
+        env:
+          PYTHONPATH: src
+        run: python -m unittest discover -s tests -v
+      - name: Type check
+        run: |
+          python -m pip install --disable-pip-version-check mypy==2.3.1
+          python -m mypy src
+      - name: Packaging is complete and free of stray files
+        run: |
+          set -Eeuo pipefail
+          python -m pip install --disable-pip-version-check build==1.4.0 twine==6.2.0
+          python -m build
+          python -m twine check --strict dist/*
+          python - <<'PY'
+          import pathlib
+          import zipfile
+
+          wheel = next(pathlib.Path("dist").glob("*.whl"))
+          names = sorted(zipfile.ZipFile(wheel).namelist())
+          required = [
+              "aether_browser/__init__.py",
+              "aether_browser/_client.py",
+              "aether_browser/cli.py",
+              "aether_browser/py.typed",
+          ]
+          for name in required:
+              assert name in names, f"missing from wheel: {name}"
+          stray = [name for name in names if name.startswith("tests/")]
+          assert not stray, f"tests must not ship: {stray}"
+          print(f"wheel: {len(names)} entries")
+          PY
+      - name: CLI runs without a server present
+        env:
+          PYTHONPATH: src
+        run: python -m aether_browser.cli --version && python -m aether_browser.cli help
