@@ -301,12 +301,17 @@ Client and CLI for Agent Browser by Aether AI.
   down      Stop the runtime and remove its volumes
   status    Print the server health document as JSON
   open      Open the live noVNC view in a browser
+  mcp       Serve this session to an MCP client over stdio (Claude Code, Cursor, ...)
   help      Show this message
 
 {_bold("Environment")}
   AGENT_BROWSER_URL               Server base URL (default {DEFAULT_BASE_URL})
   AGENT_BROWSER_CONTROLLER_TOKEN  Controller token, if the server runs authenticated
   AGENT_BROWSER_OBSERVER_TOKEN    Observer token
+
+{_bold("MCP")}
+  Add to your MCP client config:
+  {{"mcpServers":{{"agent-browser":{{"command":"aether-browser","args":["mcp"]}}}}}}
 
 {_bold("Library")}
   from aether_browser import AgentBrowser, session
@@ -315,6 +320,13 @@ Client and CLI for Agent Browser by Aether AI.
 """
     )
     return 0
+
+
+def _cmd_mcp(_: list[str]) -> int:
+    """Serve MCP over stdio. stdout is the protocol channel from here on."""
+    from .mcp import run
+
+    return run(_base_url())
 
 
 def _cmd_version(_: list[str]) -> int:
@@ -328,6 +340,7 @@ COMMANDS = {
     "down": _cmd_down,
     "status": _cmd_status,
     "open": _cmd_open,
+    "mcp": _cmd_mcp,
     "help": _cmd_help,
     "--help": _cmd_help,
     "-h": _cmd_help,

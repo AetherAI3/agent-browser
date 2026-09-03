@@ -254,6 +254,13 @@ function cmdOpen() {
   return 0
 }
 
+async function cmdMcp() {
+  // stdout belongs to the JSON-RPC transport from here on; never print to it.
+  const { runMcpServer } = await import('./mcp.js')
+  runMcpServer()
+  return new Promise(() => {})
+}
+
 function usage() {
   console.log(`
 ${bold('aether-browser')} ${dim(PKG.version)}
@@ -268,12 +275,17 @@ ${bold('Commands')}
   down      Stop the runtime and remove its volumes
   status    Print the server health document as JSON
   open      Open the live noVNC view in a browser
+  mcp       Serve this session to an MCP client over stdio (Claude Code, Cursor, ...)
   help      Show this message
 
 ${bold('Environment')}
   AGENT_BROWSER_URL               Server base URL (default ${DEFAULT_BASE_URL})
   AGENT_BROWSER_CONTROLLER_TOKEN  Controller token, if the server runs authenticated
   AGENT_BROWSER_OBSERVER_TOKEN    Observer token
+
+${bold('MCP')}
+  Add to your MCP client config:
+  {"mcpServers":{"agent-browser":{"command":"npx","args":["-y","aether-browser","mcp"]}}}
 
 ${bold('Library')}
   import { AgentBrowser, withSession } from 'aether-browser'
@@ -290,6 +302,7 @@ const commands = {
   down: cmdDown,
   status: cmdStatus,
   open: cmdOpen,
+  mcp: cmdMcp,
   help: usage,
   '--help': usage,
   '-h': usage,

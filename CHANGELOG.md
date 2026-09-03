@@ -6,6 +6,26 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **MCP server**, in both clients, under the same nine tool names: `aether-browser mcp` (Python) and
+  `npx aether-browser mcp` (Node) serve one Agent Browser session to any MCP client over stdio, so
+  Claude Code, Claude Desktop, Cursor and Windsurf can drive the session a human is watching. The
+  JSON-RPC transport is implemented directly in `clients/node/src/mcp.js` and
+  `clients/python/src/aether_browser/mcp.py`, so neither client gains a runtime dependency.
+  Documented in `docs/MCP.md`.
+- The MCP server owns the session id, so the model never carries it, and every response that can
+  carry the live view URL does. Its `initialize` instructions tell the model to stop and ask for a
+  human takeover at a login, a payment, or a 2FA prompt rather than guessing.
+- A packaging test asserts the two MCP servers expose an identical toolset, so the Node and Python
+  servers cannot drift apart without failing CI.
+
+### Changed
+
+- The README demo is a real recorded run rather than the previous montage of three static frames,
+  and it plays inline instead of linking to a file. `docs/DEMO_EVIDENCE.md` records how it was made
+  and states its limits.
+
 ## [0.1.0] - 2026-09-03
 
 First stable release of the `v1` API contract and both clients.

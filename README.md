@@ -22,6 +22,7 @@
 <p align="center">
   <a href="#quickstart">Quickstart</a> ·
   <a href="docs/API.md">API</a> ·
+  <a href="docs/MCP.md">MCP</a> ·
   <a href="docs/SECURITY.md">Security model</a> ·
   <a href="clients/node/README.md">Node client</a> ·
   <a href="clients/python/README.md">Python client</a> ·
@@ -54,9 +55,10 @@ and a live noVNC view of that **same** session is open in front of you. When the
 you take over in the window it is already using.
 
 ```bash
-docker compose up --build           # start the runtime
-npm install aether-browser          # drive it from TypeScript
-pip install aether-browser          # or from Python
+docker compose up --build                        # start the runtime
+npm install aether-browser                       # drive it from TypeScript
+pip install aether-browser                       # or from Python
+claude mcp add agent-browser -- npx -y aether-browser mcp   # or from any MCP client
 ```
 
 ## Quickstart
@@ -105,6 +107,41 @@ curl -fsS -X POST http://127.0.0.1:8092/browser/session/end -H 'Content-Type: ap
 ```
 
 The same flow is available as [`examples/curl.sh`](examples/curl.sh).
+
+## Use it from an MCP client
+
+Any MCP client — Claude Code, Claude Desktop, Cursor, Windsurf — can drive the session while you
+watch the same browser and take over when it gets stuck.
+
+```bash
+claude mcp add agent-browser -- npx -y aether-browser mcp
+```
+
+Already have the Python client? `aether-browser mcp` serves the same nine tools.
+
+<details>
+<summary>Config-file clients (Claude Desktop, Cursor, Windsurf)</summary>
+
+```json
+{
+  "mcpServers": {
+    "agent-browser": {
+      "command": "npx",
+      "args": ["-y", "aether-browser", "mcp"]
+    }
+  }
+}
+```
+</details>
+
+Nine tools: `browser_open`, `browser_navigate`, `browser_read`, `browser_click`, `browser_type`,
+`browser_press`, `browser_scroll`, `browser_status`, `browser_close`. `browser_open` returns the
+live view URL, and every later response repeats it, so the human always knows where to look.
+
+The server tells the model, on connect, to stop and ask for a takeover at a login, a payment, or a
+2FA prompt rather than guessing. That is the loop in the recording above.
+
+Full setup and limits: [`docs/MCP.md`](docs/MCP.md).
 
 ## Node and TypeScript client
 
@@ -194,6 +231,7 @@ See [`clients/python/README.md`](clients/python/README.md).
 | Human view | The same Xvfb display through loopback-only x11vnc and noVNC |
 | Ownership | One explicit UUID session with expiry, vision budget, and idempotent cleanup |
 | Authority | Observer/controller separation when authenticated; strict local loopback mode otherwise |
+| MCP | Nine stdio tools from either client (`aether-browser mcp`), no extra dependencies |
 | Navigation | HTTP(S)-only validation across requested, redirected, and browser-initiated navigation |
 
 Request and response shapes, limits, and stable error codes are documented in
