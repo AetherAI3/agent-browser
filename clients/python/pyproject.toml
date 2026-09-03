@@ -1,0 +1,66 @@
+[build-system]
+requires = ["hatchling==1.28.0"]
+build-backend = "hatchling.build"
+
+# The Python sibling of the `aether-browser` npm package. Same name, same commands, same
+# closed v1 contract; the version tracks the npm client exactly (0.1.0-rc.1 there is
+# 0.1.0rc1 here, the same release under PEP 440 normalisation) and
+# tests/test_packaging.py fails the build if the two ever drift apart.
+[project]
+name = "aether-browser"
+version = "0.1.0rc1"
+description = "Client and CLI for Agent Browser by Aether AI: drive one self-hosted Chrome session over a closed HTTP API and watch or take over that same session through noVNC."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Aether AI", email = "aetherai@aethersystems.net" }]
+keywords = [
+  "agent-browser",
+  "browser",
+  "automation",
+  "ai-agents",
+  "chrome",
+  "novnc",
+  "self-hosted",
+  "human-in-the-loop",
+  "computer-use",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Internet :: WWW/HTTP :: Browsers",
+  "Topic :: Software Development :: Testing",
+  "Typing :: Typed",
+]
+# No runtime dependencies, deliberately: the transport is urllib from the standard
+# library, exactly as the npm client uses the platform's own fetch.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/AetherAI3/agent-browser"
+Repository = "https://github.com/AetherAI3/agent-browser"
+Issues = "https://github.com/AetherAI3/agent-browser/issues"
+Changelog = "https://github.com/AetherAI3/agent-browser/blob/main/CHANGELOG.md"
+
+[project.scripts]
+aether-browser = "aether_browser.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aether_browser"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+packages = ["aether_browser"]
+mypy_path = "src"
