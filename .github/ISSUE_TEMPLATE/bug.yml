@@ -15,7 +15,7 @@ body:
     attributes:
       label: Version or exact commit
       description: Provide the tag or full commit SHA you tested.
-      placeholder: v0.1.0-rc.1 or a 40-character commit
+      placeholder: v0.2.0 or a 40-character commit
     validations:
       required: true
   - type: dropdown

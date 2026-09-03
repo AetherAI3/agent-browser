@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { PassThrough } from 'node:stream'
 import test from 'node:test'
+import { fileURLToPath } from 'node:url'
 
 import { Server, TOOLS } from '../src/mcp.js'
 
@@ -49,6 +52,14 @@ test('initialize echoes a supported protocol and advertises tools', async () => 
   assert.equal(messages[0].result.serverInfo.name, 'agent-browser')
   assert.ok(messages[0].result.capabilities.tools)
   assert.match(messages[0].result.instructions, /take over/)
+})
+
+test('the advertised version tracks package.json, so a release bump cannot leave it stale', async () => {
+  const here = dirname(fileURLToPath(import.meta.url))
+  const pkg = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'))
+  const { server, messages } = harness({})
+  await server.dispatch({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} })
+  assert.equal(messages[0].result.serverInfo.version, pkg.version)
 })
 
 test('initialize falls back when the client asks for an unknown protocol', async () => {

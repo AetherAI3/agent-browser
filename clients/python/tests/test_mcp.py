@@ -61,7 +61,7 @@ class _FakeBrowser:
     def health(self, **_: Any) -> dict[str, Any]:
         return {
             "status": "ok",
-            "version": "0.1.0",
+            "version": "0.2.0",
             "browser_ready": True,
             "session_active": False,
             "slots_available": 1,
@@ -112,6 +112,15 @@ class Protocol(unittest.TestCase):
         self.assertEqual(result["protocolVersion"], "2024-11-05")
         self.assertEqual(result["serverInfo"]["name"], "agent-browser")
         self.assertIn("take over", result["instructions"])
+
+    def test_the_advertised_version_tracks_the_package(self) -> None:
+        """A release bump must not be able to leave the server advertising a stale version."""
+        import aether_browser
+
+        server, out = _harness(_FakeBrowser())
+        server.dispatch({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}})
+        served = _messages(out)[0]["result"]["serverInfo"]["version"]
+        self.assertEqual(served, aether_browser.__version__)
 
     def test_initialize_falls_back_for_an_unknown_protocol(self) -> None:
         server, out = _harness(_FakeBrowser())

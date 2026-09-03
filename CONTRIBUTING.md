@@ -1,7 +1,7 @@
 # Contributing to Agent Browser
 
 Thank you for helping build a small, inspectable browser runtime for agents. The most useful
-contributions preserve the v0.1 authority boundary, keep behavior deterministic, and make claims
+contributions preserve the v0.x authority boundary, keep behavior deterministic, and make claims
 only when an exact commit proves them.
 
 ## Before you start

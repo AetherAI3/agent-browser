@@ -88,7 +88,7 @@ prompt, stops, a human types the code into the same live session, and the agent 
 
 ## Notes and limits
 
-- **One session at a time.** The v0.1 runtime owns a single browser slot. `browser_open` reuses an
+- **One session at a time.** The v0.x runtime owns a single browser slot. `browser_open` reuses an
   open session rather than failing; `browser_close` frees the slot. A bounded multi-session pool is
   [issue #14](https://github.com/AetherAI3/agent-browser/issues/14).
 - **The navigation policy still applies.** Loopback, private, link-local, and reserved address
