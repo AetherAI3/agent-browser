@@ -6,8 +6,8 @@
 <h3 align="center">See what your agent sees.</h3>
 
 <p align="center">
-  Self-hosted Chrome for AI agents. The agent drives one headed session through a bounded JSON
-  API — and a live view of that <em>same</em> session is open in front of you, to watch or take over.
+  Self-hosted Chrome for AI agents.<br>
+  Your agent drives one real browser session — and you can watch it happen, and step in.
 </p>
 
 <p align="center">
@@ -37,10 +37,10 @@
 </p>
 
 <p align="center"><sub>
-  A real 18-second run. The agent signs in over the API, hits a 2FA prompt it cannot answer, and stops.
-  A human takes over <strong>the same live session</strong>, types the code, and hands it straight back.
-  <br>No second browser. No replay. No reconstructing what the agent saw.
-  <a href="docs/DEMO_EVIDENCE.md">How this was recorded</a>.
+  A real 18-second run. The agent signs in, reaches a 2FA prompt it has no way to answer, and stops.
+  A human types the code into <strong>that same live session</strong> and hands it straight back.<br>
+  No second browser. No replay. Nothing to reconstruct.
+  &nbsp;·&nbsp; <a href="docs/DEMO_EVIDENCE.md">How this was recorded</a>
 </sub></p>
 
 ---
@@ -48,70 +48,94 @@
 ## Why this exists
 
 Most browser tooling for agents hands the model a browser you cannot see. When it misreads a page
-or stalls on a login, you get a transcript and a guess.
+or stalls on a login, all you get is a transcript and a guess.
 
-Agent Browser runs **one headed Chrome session**. The agent drives it through a bounded JSON API,
-and a live noVNC view of that **same** session is open in front of you. When the agent gets stuck,
-you take over in the window it is already using.
+Agent Browser runs **one headed Chrome session**. Your agent drives it through a small JSON API,
+and a live view of that **same** session sits open in front of you. When the agent gets stuck, you
+take over in the window it is already using — then hand it back.
 
-```bash
-docker compose up --build                        # start the runtime
-npm install aether-browser                       # drive it from TypeScript
-pip install aether-browser                       # or from Python
-claude mcp add agent-browser -- npx -y aether-browser mcp   # or from any MCP client
-```
-
-## Quickstart
-
-The supported one-command quickstart uses **Docker Engine on Linux** with Docker Compose v2.
-It builds the source checkout and starts Xvfb, x11vnc, noVNC, and the API. That stack can own one
-headed Google Chrome Stable session, launched by `/browser/session/create`, and both user-facing
-listeners bind to the host's numeric loopback interface.
+Start the runtime:
 
 ```bash
 docker compose up --build
 ```
 
-Once the health endpoint responds, open the live browser view at
-[`http://127.0.0.1:6080/vnc.html`](http://127.0.0.1:6080/vnc.html) and check the API from another
-terminal:
+Then reach it however you like:
+
+```bash
+npm install aether-browser    # TypeScript
+pip install aether-browser    # Python
+claude mcp add agent-browser -- npx -y aether-browser mcp    # any MCP client
+```
+
+## Quickstart
+
+One command, on **Docker Engine for Linux** with Compose v2. It builds from the source checkout
+and starts Xvfb, x11vnc, noVNC, and the API — the stack that owns a single headed Chrome session.
+Both user-facing listeners bind to numeric loopback.
+
+```bash
+docker compose up --build
+```
+
+Once health responds, open the live view at
+[`127.0.0.1:6080/vnc.html`](http://127.0.0.1:6080/vnc.html) and check the API from another terminal:
 
 ```bash
 curl -fsS http://127.0.0.1:8092/browser/health | jq .
 ```
 
-The first build installs the hash-locked Python environment and uses Patchright to install the
-then-current Google Chrome Stable package, so it can take several minutes. The exact browser
-version is captured with each accepted image; rebuilding the same source later may resolve a newer
-Stable package. Compose uses Linux host networking to keep the unauthenticated v0.x
-noVNC surface on numeric loopback; Docker Desktop and remote-host deployment are not part of
-this quickstart contract. Stop the foreground process with `Ctrl+C`.
+`Ctrl+C` stops it.
 
-## Three-command API example
+> **The first build takes several minutes.** It installs the hash-locked Python environment, then
+> uses Patchright to install the current Google Chrome Stable package. The exact browser version is
+> captured with each accepted image, so rebuilding the same source later may pick up a newer Stable.
 
-With the Compose runtime healthy and `curl` plus `jq` installed, these three commands create a
-session, navigate, and inspect structured state. Local loopback mode intentionally needs no
-bearer token; see the [authority contract](docs/API.md#transport-and-authority) before changing
-that deployment shape.
+> **Linux host networking is deliberate.** It keeps the unauthenticated v0.x noVNC surface on
+> numeric loopback. Docker Desktop and remote-host deployment are outside this quickstart.
 
-```bash
-SESSION_ID="$(curl -fsS -X POST http://127.0.0.1:8092/browser/session/create -H 'Content-Type: application/json' -d '{"api_version":"v1"}' | jq -er '.session_id')"
-curl -fsS -X POST http://127.0.0.1:8092/browser/navigate -H 'Content-Type: application/json' -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\",\"url\":\"https://example.com\"}" | jq '{status, final_url, title, readable_text}'
-curl -fsS -X POST http://127.0.0.1:8092/browser/snapshot -H 'Content-Type: application/json' -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\"}" | jq '{status, url, title, sequence, vision_steps_remaining, screenshot_base64_chars: (.screenshot_base64 | length)}'
-```
+## The API in four calls
 
-When finished, release the owned browser resources:
+With the runtime healthy and `curl` plus `jq` installed. Local loopback needs no bearer token by
+design — read the [authority contract](docs/API.md#transport-and-authority) before you change the
+deployment shape.
 
 ```bash
-curl -fsS -X POST http://127.0.0.1:8092/browser/session/end -H 'Content-Type: application/json' -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\"}" | jq .
+# Open the session. This is the browser you are about to watch.
+SESSION_ID="$(curl -fsS -X POST http://127.0.0.1:8092/browser/session/create \
+  -H 'Content-Type: application/json' \
+  -d '{"api_version":"v1"}' | jq -er '.session_id')"
+
+# Go somewhere. The page changes in the live view as this runs.
+curl -fsS -X POST http://127.0.0.1:8092/browser/navigate \
+  -H 'Content-Type: application/json' \
+  -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\",\"url\":\"https://example.com\"}" \
+  | jq '{status, final_url, title, readable_text}'
+
+# Read it back as structure, not pixels.
+curl -fsS -X POST http://127.0.0.1:8092/browser/snapshot \
+  -H 'Content-Type: application/json' \
+  -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\"}" \
+  | jq '{status, url, title, sequence, vision_steps_remaining}'
+
+# Give the browser back.
+curl -fsS -X POST http://127.0.0.1:8092/browser/session/end \
+  -H 'Content-Type: application/json' \
+  -d "{\"api_version\":\"v1\",\"session_id\":\"${SESSION_ID}\"}" | jq .
 ```
 
-The same flow is available as [`examples/curl.sh`](examples/curl.sh).
+What that did: `session/create` started one headed Chrome session and returned its UUID plus the
+local view URL. `navigate` validated the destination, pinned the allowed addresses, and changed the
+page on the shared display. `snapshot` returned bounded text, accessibility state, viewport
+metadata, counters, and a PNG of that same page. At no point did the API and the human view create
+competing browsers — they met at one owned session.
+
+The same flow ships as [`examples/curl.sh`](examples/curl.sh).
 
 ## Use it from an MCP client
 
 Any MCP client — Claude Code, Claude Desktop, Cursor, Windsurf — can drive the session while you
-watch the same browser and take over when it gets stuck.
+watch, and take over when it gets stuck.
 
 ```bash
 claude mcp add agent-browser -- npx -y aether-browser mcp
@@ -134,18 +158,18 @@ Already have the Python client? `aether-browser mcp` serves the same nine tools.
 ```
 </details>
 
-Nine tools: `browser_open`, `browser_navigate`, `browser_read`, `browser_click`, `browser_type`,
-`browser_press`, `browser_scroll`, `browser_status`, `browser_close`. `browser_open` returns the
-live view URL, and every later response repeats it, so the human always knows where to look.
+**Nine tools** — `browser_open` · `browser_navigate` · `browser_read` · `browser_click` ·
+`browser_type` · `browser_press` · `browser_scroll` · `browser_status` · `browser_close`
 
-The server tells the model, on connect, to stop and ask for a takeover at a login, a payment, or a
-2FA prompt rather than guessing. That is the loop in the recording above.
+`browser_open` hands back the live view URL, and every response after it repeats that URL, so you
+always know where to look. On connect, the server tells the model to stop and ask for a takeover at
+a login, a payment, or a 2FA prompt rather than guessing — the loop in the recording above.
 
-Full setup and limits: [`docs/MCP.md`](docs/MCP.md).
+Setup and limits: [`docs/MCP.md`](docs/MCP.md).
 
 ## Node and TypeScript client
 
-The same API from Node, with types and guaranteed session cleanup:
+The same API from Node, with types and cleanup you cannot forget:
 
 ```bash
 npm install aether-browser
@@ -164,10 +188,10 @@ await withSession(browser, async (session) => {
 })
 ```
 
-`withSession` always attempts to end the session, including when the callback throws, so a crash
-cannot leave the single session slot occupied. The package has no runtime dependencies and runs on
-any platform that can reach the server. It also carries a small CLI: `npx aether-browser doctor`
-reports what is missing before a first run, and `up` builds and starts the runtime on a Linux host.
+`withSession` always ends the session, including when your callback throws, so a crash cannot leave
+the single slot occupied. No runtime dependencies, and it runs anywhere that can reach the server.
+It carries a small CLI too: `npx aether-browser doctor` tells you what is missing before a first
+run, and `up` builds and starts the runtime on a Linux host.
 
 See [`clients/node/README.md`](clients/node/README.md).
 
@@ -193,35 +217,25 @@ with session(browser) as live:
     print(page["title"], live.view_url)
 ```
 
-The `session` context manager always attempts to end the session, including when the body raises.
-The package has no runtime dependencies -- the transport is `urllib` from the standard library --
-ships type hints, and runs on Python 3.10 or newer, on any platform that can reach the server. It
-installs the same CLI as the npm package: `aether-browser doctor`, `up`, `status`, `open`, `down`.
+The `session` context manager always ends the session, including when the body raises. No runtime
+dependencies — the transport is `urllib` from the standard library — ships type hints, and runs on
+Python 3.10 or newer, anywhere that can reach the server. Same CLI as the npm package:
+`aether-browser doctor`, `up`, `status`, `open`, `down`.
 
 See [`clients/python/README.md`](clients/python/README.md).
 
-## What happened
-
-1. `session/create` started one headed Chrome session and returned its UUID plus the local noVNC
-   view URL.
-2. `navigate` validated the destination, pinned allowed addresses, and changed the page shown in
-   the shared display.
-3. `snapshot` returned bounded text, accessibility state, viewport metadata, sequence counters,
-   and a PNG of that same page.
-4. The human view and API did not create competing browsers: they met at one owned session.
-
 ## What makes it different
 
-- **One session, two participants.** Agents act through JSON while a human can watch and take
-  over the exact display locally.
-- **Structure before pixels.** Readable text and a bounded accessibility representation are
-  available before a client spends a vision step on a screenshot.
-- **A small control surface.** The v0.x API exposes explicit browser actions rather than a shell,
-  arbitrary JavaScript, or raw DevTools access.
-- **Model-agnostic and self-hosted.** Bring the agent framework you already use and keep the
-  browser runtime on infrastructure you control.
+- **One session, two participants.** The agent acts through JSON. You watch the same display, and
+  take the controls whenever you want them.
+- **Structure before pixels.** Readable text and a bounded accessibility tree come back before you
+  spend a vision step on a screenshot.
+- **A small control surface.** The v0.x API exposes explicit browser actions — not a shell, not
+  arbitrary JavaScript, not raw DevTools.
+- **Model-agnostic and self-hosted.** Bring the framework you already use, and keep the browser on
+  hardware you control.
 
-## Current capabilities
+## What it does today
 
 | Capability | v0.x contract |
 |---|---|
@@ -234,8 +248,7 @@ See [`clients/python/README.md`](clients/python/README.md).
 | MCP | Nine stdio tools from either client (`aether-browser mcp`), no extra dependencies |
 | Navigation | HTTP(S)-only validation across requested, redirected, and browser-initiated navigation |
 
-Request and response shapes, limits, and stable error codes are documented in
-[`docs/API.md`](docs/API.md).
+Request and response shapes, limits, and stable error codes: [`docs/API.md`](docs/API.md).
 
 ## Architecture
 
@@ -273,8 +286,8 @@ independent automation paths. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Cleanup converges on session end, expiry, launch failure, application shutdown, and process
   failure.
 
-The trust assumptions and residual risks are explicit in [`docs/SECURITY.md`](docs/SECURITY.md).
-Report vulnerabilities privately through [`SECURITY.md`](SECURITY.md); do not open a public
+Trust assumptions and residual risks are spelled out in [`docs/SECURITY.md`](docs/SECURITY.md).
+Report vulnerabilities privately through [`SECURITY.md`](SECURITY.md) — please do not open a public
 security issue.
 
 ### Source recovery and exclusions
@@ -295,27 +308,27 @@ and credential injection are excluded from the public core. Provenance status is
 
 ## Roadmap
 
-**Shipped.** Both clients and their CLI are published under the name `aether-browser`:
-[on npm](https://www.npmjs.com/package/aether-browser) from [`clients/node`](clients/node), and
-[on PyPI](https://pypi.org/project/aether-browser/) from [`clients/python`](clients/python). The
-Python context-manager SDK that was roadmap item 1 is part of that release.
+**Shipped.** Both clients and their CLI are published as `aether-browser`, version for version,
+[on npm](https://www.npmjs.com/package/aether-browser) from [`clients/node`](clients/node) and
+[on PyPI](https://pypi.org/project/aether-browser/) from [`clients/python`](clients/python). Since
+`0.2.0` both also serve the MCP server.
 
-Two separable contribution tracks remain open, each with an issue:
+Two tracks are open, each with an issue, and each is a good first contribution:
 
-1. [Multi-session worker pool](https://github.com/AetherAI3/agent-browser/issues/14) with explicit
+1. [Multi-session worker pool](https://github.com/AetherAI3/agent-browser/issues/14) — explicit
    isolation and capacity semantics.
-2. [Session trace and recording export](https://github.com/AetherAI3/agent-browser/issues/15) with
-   clear privacy controls.
+2. [Session trace and recording export](https://github.com/AetherAI3/agent-browser/issues/15) —
+   with clear privacy controls.
 
-These two are roadmap candidates, not shipped features.
+These are candidates, not shipped features.
 
 ## Contributing
 
 Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), the
 [`Code of Conduct`](CODE_OF_CONDUCT.md), and the current [`API contract`](docs/API.md). Small,
-well-tested changes that preserve the narrow authority boundary are welcome. The three open
-roadmap issues above are the best place to start. Security reports use the private process in
-[`SECURITY.md`](SECURITY.md).
+well-tested changes that keep the authority boundary narrow are very welcome — the two roadmap
+issues above are the best place to start. Security reports go through the private process in
+[`SECURITY.md`](SECURITY.md), never a public issue.
 
 ## License and third-party notices
 
@@ -326,4 +339,4 @@ remain under their respective terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_
 Aether is not affiliated with or endorsed by Google. The v0.x distribution target is source that
 builds locally; this repository does not distribute a prebuilt Chrome-containing image.
 
-<p align="center"><strong>Agent Browser</strong> · See what your agent sees.</p>
+<p align="center"><sub><strong>Agent Browser</strong> · See what your agent sees.</sub></p>
