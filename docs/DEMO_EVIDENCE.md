@@ -2,13 +2,48 @@
 
 ## Status
 
-The demo media in `assets/` was generated from the exact release-candidate commit and the exact
-immutable image that passed acceptance. `assets/demo.mp4` is a short generated montage, not a
-continuous live screen recording; the interaction, noVNC/RFB, same-display, refusal, and cleanup
-proofs come from `acceptance.json`, not from the video. The social preview is a prepared brand
-asset and is not runtime proof.
+`assets/demo.gif` (and the matching `assets/demo.mp4`) is a **continuous screen recording of a real
+Agent Browser run** — not a montage of stills. It was captured with `ffmpeg -f x11grab` from the
+same X display the session's Chrome window was drawn on, which is the display the noVNC view
+serves. Every state change visible in the recording was produced by the runtime in this repository:
+the typing and the sign-in click came from `POST /browser/interact`, the page changes came from the
+session's own navigation, and the takeover keystrokes were delivered to that same display while the
+session stayed open. Nothing in the recording is re-enacted, spliced, or sped up.
 
-## Capture record
+The recording shows the v0.1 claim end to end: an agent drives the session over the API, reaches a
+two-factor prompt it has no way to answer, stops; a human types into the *same* live session; the
+agent then calls `snapshot` and continues against the page the human unblocked.
+
+## How the recording was made
+
+| Field | Recorded value |
+|---|---|
+| Capture method | `ffmpeg -f x11grab -draw_mouse 1 -framerate 25 -video_size 1280x800 -i :99`, single continuous take, 18 s |
+| Agent actions | `POST /browser/session/create`, `/browser/navigate`, `/browser/interact` (type, click), `/browser/snapshot` against the API in `src/agent_browser/` |
+| Human takeover | Pointer and keystrokes delivered to the same X display the session owns, while the session remained active |
+| Target site | A local fixture served on `http://127.0.0.1:8080` (sign-in → two-factor → dashboard), allowed through the project's own `AGENT_BROWSER_TEST_MODE` / `AGENT_BROWSER_TEST_ORIGINS` fixture path so the loopback destination policy stays otherwise intact |
+| Browser binary | Chromium 141.0.7390.37, launched through Patchright by the unmodified session manager. The published Docker image installs Google Chrome Stable instead; the recording host already had a Chromium build at the Chrome path, so this run used it. The runtime, API, policy, and session code are unmodified. |
+| Post-processing | Caption bar composited below the frame (`drawtext`); frames, timing, and content unaltered |
+| Captions | Derived from the run's own action log, timestamped against the recording |
+
+## Honest limits of this recording
+
+- The fixture site is local and synthetic, so the run is reproducible and contains no third-party
+  content. It exercises the same navigation, interaction, and snapshot paths as any other target.
+- The browser binary is Chromium rather than Google Chrome Stable (see the table). The Compose
+  quickstart installs Chrome.
+- The caption bar is an editorial overlay added after capture. The browser frame above it is
+  untouched.
+- The social preview (`assets/social-preview.png`) is a prepared brand asset and is not runtime proof.
+
+## Superseded: the v0.1.0 release-candidate media
+
+The section below documents the **earlier** `assets/demo.mp4` and `assets/demo-poster.png` — an
+eight-second montage of three still frames with no live motion. Those files have been replaced by
+the continuous recording described above. The acceptance evidence recorded here still stands on its
+own and is retained unchanged for the v0.1.0 release record.
+
+### Capture record (superseded media)
 
 | Field | Recorded value |
 |---|---|
@@ -24,7 +59,7 @@ asset and is not runtime proof.
 | `assets/demo-poster.png` SHA-256 | `f8197cafcf4d7ce0bc7e323256307a9d2ed687a0fb96d416dd4e4178feb8a9f3` |
 | `assets/social-preview.png` and Pages-copy SHA-256 and dimensions | `e3473f97af387d28bed32e8959873b79175ccc305e17dfa7aa310ef1e9329556`; 1280x640; `docs/assets/social-preview.png` is byte-identical |
 
-## How the media was produced
+### How the superseded media was produced
 
 Two real frames were taken during the isolated acceptance run against the exact image:
 
@@ -41,7 +76,7 @@ three seconds of `display-after.png`. It contains no audio track and no live mot
 both generated files were written by the workflow to `generated-assets/SHA256SUMS` and match the
 committed files byte for byte.
 
-## What the frames show
+### What the superseded frames show
 
 Both frames render the same deterministic release fixture, served over container loopback at
 `127.0.0.1:18080`, with the same generated nonce `visual-proof-a3c237fb698c9854200f497ee196b811`
