@@ -1,14 +1,13 @@
 <p align="center">
-  <img src="assets/agent-browser-logo.png" alt="Pixel-art computer displaying a globe and pointer, the Agent Browser logo" width="260">
+  <img src="assets/agent-browser-logo.png" alt="Pixel-art computer displaying a globe and pointer, the Agent Browser logo" width="200">
 </p>
 
 <h1 align="center">Agent Browser</h1>
-<p align="center"><strong>by Aether AI</strong></p>
-<h2 align="center">See what your agent sees.</h2>
+<h3 align="center">See what your agent sees.</h3>
 
 <p align="center">
-  Self-hosted Chrome for AI agents. Control it through an API and watch or take over the
-  exact same browser session through noVNC.
+  Self-hosted Chrome for AI agents. The agent drives one headed session through a bounded JSON
+  API — and a live view of that <em>same</em> session is open in front of you, to watch or take over.
 </p>
 
 <p align="center">
@@ -17,7 +16,6 @@
   <a href="https://pypi.org/project/aether-browser/"><img alt="PyPI: aether-browser" src="https://img.shields.io/pypi/v/aether-browser?color=3775a9&label=PyPI%3A%20aether-browser"></a>
   <a href="LICENSE"><img alt="Source license: Apache-2.0" src="https://img.shields.io/badge/source%20license-Apache--2.0-0b7285"></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776ab">
-  <img alt="Docker" src="https://img.shields.io/badge/Docker-Compose-2496ed">
   <img alt="Self-hosted" src="https://img.shields.io/badge/runtime-self--hosted-2f9e44">
 </p>
 
@@ -25,46 +23,41 @@
   <a href="#quickstart">Quickstart</a> ·
   <a href="docs/API.md">API</a> ·
   <a href="docs/SECURITY.md">Security model</a> ·
-  <a href="CONTRIBUTING.md">Contributing</a> ·
   <a href="clients/node/README.md">Node client</a> ·
   <a href="clients/python/README.md">Python client</a> ·
-  <a href="CHANGELOG.md">Changelog</a> ·
-  <a href="docs/RELEASE_EVIDENCE.md">Release status</a>
+  <a href="CONTRIBUTING.md">Contributing</a> ·
+  <a href="CHANGELOG.md">Changelog</a>
 </p>
 
-## One session, two participants
+---
+
+<p align="center">
+  <img src="assets/demo.gif" alt="An agent signs in through the Agent Browser JSON API, stops at a two-factor prompt it cannot answer, a human takes over the same live session and types the code, and the agent resumes and reads the dashboard" width="820">
+</p>
+
+<p align="center"><sub>
+  A real 18-second run. The agent signs in over the API, hits a 2FA prompt it cannot answer, and stops.
+  A human takes over <strong>the same live session</strong>, types the code, and hands it straight back.
+  <br>No second browser. No replay. No reconstructing what the agent saw.
+  <a href="docs/DEMO_EVIDENCE.md">How this was recorded</a>.
+</sub></p>
+
+---
+
+## Why this exists
 
 Most browser tooling for agents hands the model a browser you cannot see. When it misreads a page
 or stalls on a login, you get a transcript and a guess.
 
-Agent Browser runs **one headed Google Chrome Stable session**. The agent drives it through a
-bounded JSON API, and a live noVNC view of that **same** session is open in front of you. When the
-agent gets stuck, you take over in the window it is already using — no second browser, no replay,
-no reconstructing what it saw.
+Agent Browser runs **one headed Chrome session**. The agent drives it through a bounded JSON API,
+and a live noVNC view of that **same** session is open in front of you. When the agent gets stuck,
+you take over in the window it is already using.
 
 ```bash
 docker compose up --build           # start the runtime
 npm install aether-browser          # drive it from TypeScript
 pip install aether-browser          # or from Python
 ```
-
-### Exact-release demo
-
-<p align="center">
-  <a href="assets/demo.mp4">
-    <img src="assets/demo-poster.png" alt="Agent Browser exact-image runtime demo" width="760">
-  </a>
-</p>
-
-The poster and video are assembled from real API and same-display frames captured during the
-immutable-image acceptance run. Their commit, image ID, workflow run, and checksums are recorded
-in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md); the social preview is not runtime proof.
-
-> [!IMPORTANT]
-> **Agent Browser v0.1.0 is a source-first, self-hosted release.** It is not a
-> hosted service, and the v0.1 noVNC surface is unauthenticated and meant for numeric loopback on a
-> machine you control. No Chrome-containing image, image tar, or public layer cache is distributed
-> unless separate redistribution authorization is documented.
 
 ## Quickstart
 
@@ -180,7 +173,7 @@ See [`clients/python/README.md`](clients/python/README.md).
    and a PNG of that same page.
 4. The human view and API did not create competing browsers: they met at one owned session.
 
-## Why Agent Browser
+## What makes it different
 
 - **One session, two participants.** Agents act through JSON while a human can watch and take
   over the exact display locally.
@@ -223,6 +216,12 @@ flowchart LR
 The session manager owns the page, browser context, temporary profile, timers, counters, and
 cleanup. The API and the live view are different interfaces to that shared resource, not two
 independent automation paths. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+
+> [!IMPORTANT]
+> **Agent Browser v0.1.0 is a source-first, self-hosted release.** It is not a hosted service, and
+> the v0.1 noVNC surface is unauthenticated and meant for numeric loopback on a machine you control.
+> No Chrome-containing image, image tar, or public layer cache is distributed unless separate
+> redistribution authorization is documented.
 
 ## Security boundary
 
