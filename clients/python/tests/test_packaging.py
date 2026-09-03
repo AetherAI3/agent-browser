@@ -54,9 +54,18 @@ class TestPackaging(unittest.TestCase):
 
     def test_the_two_clients_expose_the_same_commands(self) -> None:
         node_cli = (NODE_CLIENT / "src" / "cli.js").read_text(encoding="utf-8")
-        for command in ("doctor", "up", "down", "status", "open", "help"):
+        for command in ("doctor", "up", "down", "status", "open", "mcp", "help"):
             self.assertIn(command, cli.COMMANDS)
             self.assertIn(f"  {command}", node_cli)
+
+    def test_the_two_mcp_servers_expose_the_same_tools(self) -> None:
+        """A client must be able to swap `aether-browser mcp` for `npx aether-browser mcp`."""
+        from aether_browser.mcp import TOOLS
+
+        node_mcp = (NODE_CLIENT / "src" / "mcp.js").read_text(encoding="utf-8")
+        for tool in TOOLS:
+            self.assertIn(f"name: '{tool['name']}'", node_mcp)
+        self.assertEqual(len(TOOLS), node_mcp.count("    name: 'browser_"))
 
     def test_the_package_declares_no_runtime_dependencies(self) -> None:
         text = (PYTHON_CLIENT / "pyproject.toml").read_text(encoding="utf-8")
