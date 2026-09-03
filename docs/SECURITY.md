@@ -1,6 +1,6 @@
-# Agent Browser v0.1 security model
+# Agent Browser v0.x security model
 
-This document describes the implemented v0.1 boundary and the assumptions a deployer must keep
+This document describes the implemented v0.x boundary and the assumptions a deployer must keep
 true. It is not a certification or a claim that the software has no vulnerabilities.
 
 ## Assets and trust zones
@@ -26,7 +26,7 @@ host administrator or a compromised container engine.
   Observer access is limited to health and snapshots; controller access covers lifecycle,
   navigation, and interaction.
 
-The v0.1 noVNC surface has no application authentication. Any process or user able to reach the
+The v0.x noVNC surface has no application authentication. Any process or user able to reach the
 host loopback interface is trusted with the live view and takeover capability. Do not proxy,
 tunnel, publish, or bridge the noVNC or raw VNC ports.
 
@@ -77,7 +77,7 @@ recording. Deployers own retention, transport security, and access control outsi
 
 ## Known limitations
 
-- noVNC is unauthenticated and local-only in v0.1.
+- noVNC is unauthenticated and local-only in the v0.x line.
 - The Compose quickstart uses Linux host networking and trusts processes that can reach host
   loopback.
 - The runtime is a single-session worker, not a multi-tenant isolation boundary.
@@ -86,7 +86,7 @@ recording. Deployers own retention, transport security, and access control outsi
 - Container builds resolve the then-current Google Chrome Stable package. The read-only runtime
   does not auto-update it; retain the recorded version and image ID, and rebuild promptly for
   browser security fixes.
-- A locally built container is the intended v0.1 runtime. Do not publish a Chrome-containing
+- A locally built container is the intended v0.x runtime. Do not publish a Chrome-containing
   image, image tar, or public layer cache without separately documented redistribution
   authorization.
 - Exact-runner, exact-main acceptance, and demo claims are valid only when the corresponding

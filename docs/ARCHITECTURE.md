@@ -1,4 +1,4 @@
-# Agent Browser v0.1 architecture contract
+# Agent Browser v0.x architecture contract
 
 Agent Browser is one headed Chrome session with two interfaces to the same runtime: a small HTTP API for agent control and loopback-only noVNC for human observation or takeover.
 
@@ -42,7 +42,7 @@ The session ID remains explicit in every session-scoped payload so a future mult
 - The raw proxy peer and Host authority are validated. Uvicorn proxy-header parsing is disabled,
   and forwarding headers are rejected instead of becoming authority inputs.
 - noVNC remains unauthenticated, literal loopback-only, and outside the remote proxy surface in
-  v0.1. The container entrypoint rejects every `AGENT_BROWSER_NOVNC_BIND` value except
+  the v0.x line. The container entrypoint rejects every `AGENT_BROWSER_NOVNC_BIND` value except
   `127.0.0.1`; its implementation-only raw VNC socket is fixed to `127.0.0.1:5900`.
 - Test-only local origins require explicit test mode and an exact allowlist; production defaults never enable that exception.
 
@@ -62,4 +62,6 @@ extension, shell, filesystem, credential, or cookie import operation.
 
 ## Non-goals
 
-There is no database, account system, hosted service, cloud control plane, dashboard, bundled model, proxy rotation, CAPTCHA bypass, anti-detection guarantee, MCP server, credential vault, credential injection, multi-session pool, trading integration, or production remote-hosting claim in v0.1.
+There is no database, account system, hosted service, cloud control plane, dashboard, bundled model, proxy rotation, CAPTCHA bypass, anti-detection guarantee, credential vault, credential injection, multi-session pool, trading integration, or production remote-hosting claim in the v0.x line.
+
+Since `0.2.0` both clients also ship an MCP server (`docs/MCP.md`). It is a client of this contract, not an extension of it: it speaks JSON-RPC over stdio to an MCP client and the documented HTTP routes to this runtime, adds no route, and widens no authority. Everything above still bounds it.

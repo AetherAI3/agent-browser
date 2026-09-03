@@ -6,6 +6,8 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-03
+
 ### Added
 
 - **MCP server**, in both clients, under the same nine tool names: `aether-browser mcp` (Python) and
@@ -18,13 +20,21 @@ All notable changes to Agent Browser are recorded here. The format follows
   carry the live view URL does. Its `initialize` instructions tell the model to stop and ask for a
   human takeover at a login, a payment, or a 2FA prompt rather than guessing.
 - A packaging test asserts the two MCP servers expose an identical toolset, so the Node and Python
-  servers cannot drift apart without failing CI.
+  servers cannot drift apart without failing CI. Each server also reports the version its own
+  package declares, with a test per client, so a release bump cannot leave an MCP server
+  advertising a stale version.
 
 ### Changed
 
 - The README demo is a real recorded run rather than the previous montage of three static frames,
   and it plays inline instead of linking to a file. `docs/DEMO_EVIDENCE.md` records how it was made
   and states its limits.
+- Documentation that describes an ongoing property of the pre-1.0 line — the unauthenticated
+  loopback-only noVNC surface, the closed API contract, the locally built container — now says
+  `v0.x` rather than `v0.1`, so those statements stay true across releases instead of silently
+  going stale on every bump. Statements that name the release itself say `v0.2.0`.
+- `SECURITY.md` no longer describes the project as preparing its first release candidate, and its
+  supported-version table names the current release line.
 
 ## [0.1.0] - 2026-09-03
 
@@ -85,6 +95,7 @@ release and it carries the final naming throughout.
   fixed high-or-higher findings, not an absence of vulnerabilities; see
   [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) for the full posture.
 
-[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.0
 [0.1.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.1.0
 [0.1.0-rc.1]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.1.0-rc.1

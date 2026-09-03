@@ -1,6 +1,6 @@
 # Agent Browser API v1 contract
 
-The v0.1 runtime exposes one closed JSON API. Route names are intentionally stable and unprefixed; every request and response carries `api_version: "v1"`. Unknown fields are rejected.
+The v0.x runtime exposes one closed JSON API. Route names are intentionally stable and unprefixed; every request and response carries `api_version: "v1"`. Unknown fields are rejected.
 
 ## Transport and authority
 
@@ -10,7 +10,7 @@ Tokens never appear in URLs, responses, logs, screenshots, or examples. Strict l
 mode may run without tokens only when remote mode is disabled and both API and noVNC listeners
 are numeric-loopback-bound.
 
-Direct non-loopback API listening is not supported in v0.1, even with bearer tokens. Remote API
+Direct non-loopback API listening is not supported in the v0.x line, even with bearer tokens. Remote API
 clients are supported only through an explicitly configured same-host TLS reverse proxy. The
 backend remains HTTP on a numeric loopback socket and requires the complete tuple below:
 
@@ -32,7 +32,7 @@ forwarding headers and must never route the noVNC surface. Start the API through
 `python -m agent_browser.main` launcher; a raw Uvicorn CLI can override validated listener
 settings and is outside the transport contract.
 
-The v0.1 local Compose profile serves noVNC without application authentication, so it enforces the exact numeric listener `127.0.0.1` and uses Linux host networking rather than a wildcard container listener plus port publishing. Its implementation-only raw VNC socket is also unauthenticated and fixed to `127.0.0.1:5900`. Treat every process and user able to access the host loopback interface as trusted with the live browser view. Do not expose either view port through a tunnel, reverse proxy, or container bridge.
+The v0.x local Compose profile serves noVNC without application authentication, so it enforces the exact numeric listener `127.0.0.1` and uses Linux host networking rather than a wildcard container listener plus port publishing. Its implementation-only raw VNC socket is also unauthenticated and fixed to `127.0.0.1:5900`. Treat every process and user able to access the host loopback interface as trusted with the live browser view. Do not expose either view port through a tunnel, reverse proxy, or container bridge.
 
 Release acceptance instead consumes the immutable image ID from the preceding exact-commit build, disables pulling, places the Browser and deterministic fixture in the same `--network none` Podman namespace, and accesses these loopback endpoints only through remote execution inside the pod. CI publishes no API, noVNC, VNC, or fixture port to its runner host.
 

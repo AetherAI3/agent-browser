@@ -2,12 +2,12 @@
 
 ## Supported versions
 
-Agent Browser is preparing its first public source release candidate. Security fixes are made
-on the current `main` branch; no older release line is supported yet.
+Agent Browser ships from the current `main` branch. Security fixes land on the latest release
+line; older lines are not backported.
 
 | Version | Supported |
 |---|:---:|
-| Current `main` / v0.1 source RC | Yes |
+| Current `main` / v0.2.x source release | Yes |
 | Older snapshots | No |
 
 ## Report a vulnerability

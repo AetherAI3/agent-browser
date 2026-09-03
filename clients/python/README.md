@@ -107,7 +107,7 @@ point it at a server on a Linux host and drive it from macOS, Windows, or CI.
 
 ## Security
 
-The v0.1 noVNC surface is **unauthenticated** and intended for numeric loopback on a machine you
+The v0.x noVNC surface is **unauthenticated** and intended for numeric loopback on a machine you
 control. Treat every process and user that can reach that loopback interface as trusted with the
 live browser view. Do not expose it through a tunnel, reverse proxy, or container bridge. See the
 [security model](https://github.com/AetherAI3/agent-browser/blob/main/docs/SECURITY-MODEL.md).
@@ -119,7 +119,7 @@ rejects unknown fields.
 
 ## Status
 
-`0.1.0` tracks Agent Browser `v0.1.0` and its `api_version: "v1"` contract, and is released
+`0.2.0` tracks Agent Browser `v0.2.0` and its `api_version: "v1"` contract, and is released
 version for version with the npm client. Issues and design discussion are welcome on
 [the repository](https://github.com/AetherAI3/agent-browser/issues).
 

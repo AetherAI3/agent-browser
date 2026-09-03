@@ -83,7 +83,7 @@ curl -fsS http://127.0.0.1:8092/browser/health | jq .
 The first build installs the hash-locked Python environment and uses Patchright to install the
 then-current Google Chrome Stable package, so it can take several minutes. The exact browser
 version is captured with each accepted image; rebuilding the same source later may resolve a newer
-Stable package. Compose uses Linux host networking to keep the unauthenticated v0.1
+Stable package. Compose uses Linux host networking to keep the unauthenticated v0.x
 noVNC surface on numeric loopback; Docker Desktop and remote-host deployment are not part of
 this quickstart contract. Stop the foreground process with `Ctrl+C`.
 
@@ -216,14 +216,14 @@ See [`clients/python/README.md`](clients/python/README.md).
   over the exact display locally.
 - **Structure before pixels.** Readable text and a bounded accessibility representation are
   available before a client spends a vision step on a screenshot.
-- **A small control surface.** The v0.1 API exposes explicit browser actions rather than a shell,
+- **A small control surface.** The v0.x API exposes explicit browser actions rather than a shell,
   arbitrary JavaScript, or raw DevTools access.
 - **Model-agnostic and self-hosted.** Bring the agent framework you already use and keep the
   browser runtime on infrastructure you control.
 
 ## Current capabilities
 
-| Capability | v0.1 contract |
+| Capability | v0.x contract |
 |---|---|
 | Browser | One headed Google Chrome Stable session launched through Patchright |
 | State | URL, title, readable text, bounded accessibility nodes, viewport, and PNG snapshot |
@@ -256,14 +256,14 @@ cleanup. The API and the live view are different interfaces to that shared resou
 independent automation paths. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 > [!IMPORTANT]
-> **Agent Browser v0.1.0 is a source-first, self-hosted release.** It is not a hosted service, and
-> the v0.1 noVNC surface is unauthenticated and meant for numeric loopback on a machine you control.
+> **Agent Browser v0.2.0 is a source-first, self-hosted release.** It is not a hosted service, and
+> the v0.x noVNC surface is unauthenticated and meant for numeric loopback on a machine you control.
 > No Chrome-containing image, image tar, or public layer cache is distributed unless separate
 > redistribution authorization is documented.
 
 ## Security boundary
 
-- API and noVNC listen on numeric loopback by default; noVNC remains loopback-only in v0.1.
+- API and noVNC listen on numeric loopback by default; noVNC remains loopback-only in the v0.x line.
 - Remote API clients require a separately operated same-host HTTPS reverse proxy, an exact
   trusted loopback peer, strict Host validation, and distinct strong observer/controller tokens.
 - Destination validation rejects credentials, unsupported schemes, blocked address classes,
@@ -323,7 +323,7 @@ Aether-owned source code is licensed under the [Apache License 2.0](LICENSE). Go
 separately licensed under [Google's Chrome terms](https://www.google.com/chrome/terms/) and is not
 covered by Aether's Apache license; dependencies, system packages, fonts, and web assets also
 remain under their respective terms. See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
-Aether is not affiliated with or endorsed by Google. The v0.1 distribution target is source that
+Aether is not affiliated with or endorsed by Google. The v0.x distribution target is source that
 builds locally; this repository does not distribute a prebuilt Chrome-containing image.
 
 <p align="center"><strong>Agent Browser</strong> · See what your agent sees.</p>

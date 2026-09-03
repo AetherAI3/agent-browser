@@ -25,7 +25,7 @@ REPO = "https://github.com/AetherAI3/agent-browser"
 NOVNC_URL = "http://127.0.0.1:6080/vnc.html"
 # The published source tag for this client. `up` builds this exact tree, so the container
 # and the client always speak the same api_version.
-SOURCE_TAG = "v0.1.0"
+SOURCE_TAG = "v0.2.0"
 
 _COLOR = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
 

@@ -10,8 +10,8 @@ Rather than a headless browser the operator cannot see, it runs one headed sessi
 participants share: the agent acts through JSON, the human watches the identical display and can
 take the controls without starting a second browser or replaying a transcript.
 
-Status: `v0.1.0-rc.1`, a release candidate. The API contract is `api_version: "v1"` and may change
-before `v0.1.0`.
+Status: `v0.2.0`, released. The API contract is `api_version: "v1"`; it may still change within the
+pre-1.0 line. Both clients also serve an MCP server over stdio (`aether-browser mcp`).
 
 ## Interface
 
@@ -28,7 +28,7 @@ before `v0.1.0`.
 
 ## Constraints worth knowing before recommending it
 
-- The v0.1 noVNC surface is unauthenticated and is intended for numeric loopback on a machine the
+- The v0.x noVNC surface is unauthenticated and is intended for numeric loopback on a machine the
   operator controls. It must not be exposed through a tunnel, reverse proxy, or container bridge.
 - The documented quickstart is Linux with Docker Compose v2; it uses host networking so both
   listeners stay on numeric loopback. Docker Desktop on macOS and Windows is outside that contract.

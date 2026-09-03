@@ -5,10 +5,10 @@ children=""
 novnc_bind="${AGENT_BROWSER_NOVNC_BIND:-127.0.0.1}"
 novnc_port="${AGENT_BROWSER_NOVNC_PORT:-6080}"
 
-# noVNC is intentionally unauthenticated in v0.1. Refuse every configurable
+# noVNC is intentionally unauthenticated in the v0.x line. Refuse every configurable
 # exposure wider than numeric IPv4 loopback instead of relying on port publishing.
 if [ "$novnc_bind" != "127.0.0.1" ]; then
-  echo "AGENT_BROWSER_NOVNC_BIND must be exactly 127.0.0.1 in v0.1" >&2
+  echo "AGENT_BROWSER_NOVNC_BIND must be exactly 127.0.0.1 in the v0.x line" >&2
   exit 1
 fi
 

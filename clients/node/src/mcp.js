@@ -14,10 +14,26 @@
  * project is that a human can see and take over what the agent is doing.
  */
 
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { AgentBrowser, AgentBrowserError, ALLOWED_KEYS, DEFAULT_BASE_URL } from './index.js'
 
 const SERVER_NAME = 'agent-browser'
-const SERVER_VERSION = '0.1.0'
+
+/**
+ * The version reported to MCP clients is the package's own, read at load time rather than
+ * repeated here, so a release bump cannot leave this server advertising a stale version.
+ */
+const SERVER_VERSION = (() => {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url))
+    return JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8')).version
+  } catch {
+    return '0.0.0'
+  }
+})()
 const SUPPORTED_PROTOCOLS = new Set(['2024-11-05', '2025-03-26', '2025-06-18'])
 const FALLBACK_PROTOCOL = '2025-06-18'
 

@@ -117,5 +117,5 @@ Before any binary image publication, generate an SBOM from the exact image, reco
 Debian and Python package versions, archive installed copyright/license files, retain Google
 Chrome's terms plus its Chromium and third-party notices, and review redistribution and
 reciprocal-license source/offer requirements. The private
-v0.1 RC currently targets a source release with a locally built container; this notice does not
+The v0.x line targets a source release with a locally built container; this notice does not
 authorize a binary image publication.
