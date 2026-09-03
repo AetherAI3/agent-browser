@@ -45,7 +45,7 @@ no reconstructing what it saw.
 ```bash
 docker compose up --build           # start the runtime
 npm install aether-browser          # drive it from TypeScript
-pip install --pre aether-browser    # or from Python
+pip install aether-browser          # or from Python
 ```
 
 ### Exact-release demo
@@ -61,7 +61,7 @@ immutable-image acceptance run. Their commit, image ID, workflow run, and checks
 in [`docs/DEMO_EVIDENCE.md`](docs/DEMO_EVIDENCE.md); the social preview is not runtime proof.
 
 > [!IMPORTANT]
-> **Agent Browser v0.1.0-rc.1 is a source-first, self-hosted release candidate.** It is not a
+> **Agent Browser v0.1.0 is a source-first, self-hosted release.** It is not a
 > hosted service, and the v0.1 noVNC surface is unauthenticated and meant for numeric loopback on a
 > machine you control. No Chrome-containing image, image tar, or public layer cache is distributed
 > unless separate redistribution authorization is documented.
@@ -146,7 +146,7 @@ See [`clients/node/README.md`](clients/node/README.md).
 The same client, same name, same commands, released version for version with the npm package:
 
 ```bash
-pip install --pre aether-browser
+pip install aether-browser
 ```
 
 ```python
@@ -167,8 +167,6 @@ The `session` context manager always attempts to end the session, including when
 The package has no runtime dependencies -- the transport is `urllib` from the standard library --
 ships type hints, and runs on Python 3.10 or newer, on any platform that can reach the server. It
 installs the same CLI as the npm package: `aether-browser doctor`, `up`, `status`, `open`, `down`.
-
-`--pre` is required while both clients track a release candidate; it drops once `0.1.0` ships.
 
 See [`clients/python/README.md`](clients/python/README.md).
 
