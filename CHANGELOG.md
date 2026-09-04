@@ -6,6 +6,23 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-09-04
+
+### Added
+
+- `server.json` at the repository root, so Agent Browser can be published to the official MCP
+  Registry as `io.github.AetherAI3/agent-browser`. It lists both clients — the npm and PyPI
+  `aether-browser` packages — each started as `aether-browser mcp` over stdio, with
+  `AGENT_BROWSER_URL` and the two tokens declared as optional environment variables.
+- Registry ownership proof carried by the packages themselves: an `mcpName` field in the npm
+  client's `package.json`, and an `mcp-name` marker at the top of the PyPI client's README,
+  which is that package's long description. The registry verifies both against live package
+  metadata, so this is the first release that can be published to it.
+
+### Changed
+
+- Version bumped to 0.2.2 across the runtime, both clients, the image label, and the Compose
+  tag. No runtime behaviour changes, and the API contract stays `api_version: "v1"`.
 ## [0.2.1] - 2026-09-04
 
 ### Fixed
@@ -106,7 +123,8 @@ release and it carries the final naming throughout.
   fixed high-or-higher findings, not an absence of vulnerabilities; see
   [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) for the full posture.
 
-[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.2
 [0.2.1]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.1
 [0.2.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.0
 [0.1.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.1.0

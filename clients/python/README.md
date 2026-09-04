@@ -1,3 +1,5 @@
+<!-- mcp-name: io.github.AetherAI3/agent-browser -->
+
 # aether-browser
 
 Client and CLI for **[Agent Browser](https://github.com/AetherAI3/agent-browser) by Aether AI** —
@@ -119,7 +121,7 @@ rejects unknown fields.
 
 ## Status
 
-`0.2.1` tracks Agent Browser `v0.2.1` and its `api_version: "v1"` contract, and is versioned in
+`0.2.2` tracks Agent Browser `v0.2.2` and its `api_version: "v1"` contract, and is versioned in
 lockstep with the npm client. Issues and design discussion are welcome on
 [the repository](https://github.com/AetherAI3/agent-browser/issues).
 
