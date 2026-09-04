@@ -1,7 +1,7 @@
 FROM python:3.11-slim-bookworm@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
 
 LABEL org.opencontainers.image.title="Agent Browser" \
-      org.opencontainers.image.version="0.2.0" \
+      org.opencontainers.image.version="0.2.1" \
       org.opencontainers.image.source="https://github.com/AetherAI3/agent-browser" \
       org.opencontainers.image.documentation="https://github.com/AetherAI3/agent-browser/blob/main/THIRD_PARTY_NOTICES.md"
 

@@ -33,13 +33,14 @@
 ---
 
 <p align="center">
-  <img src="assets/demo.gif" alt="An agent signs in through the Agent Browser JSON API, stops at a two-factor prompt it cannot answer, a human takes over the same live session and types the code, and the agent resumes and reads the dashboard" width="820">
+  <img src="assets/demo.gif" alt="An agent signs in through the Agent Browser JSON API, stops at a two-factor prompt it cannot answer, a human types the code into the displayed browser session, and the agent resumes and reads the dashboard" width="820">
 </p>
 
 <p align="center"><sub>
-  A real 18-second run. The agent signs in, reaches a 2FA prompt it has no way to answer, and stops.
-  A human types the code into <strong>that same live session</strong> and hands it straight back.<br>
-  No second browser. No replay. Nothing to reconstruct.
+  An 18-second recorded demonstration. The agent signs in, reaches a 2FA prompt it has no way to
+  answer, and stops. A human types the code into <strong>the displayed session</strong>, then the
+  agent continues.<br>
+  Capture provenance, checksums, and independently verifiable limits are documented.
   &nbsp;·&nbsp; <a href="docs/DEMO_EVIDENCE.md">How this was recorded</a>
 </sub></p>
 
@@ -269,7 +270,7 @@ cleanup. The API and the live view are different interfaces to that shared resou
 independent automation paths. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 > [!IMPORTANT]
-> **Agent Browser v0.2.0 is a source-first, self-hosted release.** It is not a hosted service, and
+> **Agent Browser v0.2.1 is source-first and self-hosted.** It is not a hosted service, and
 > the v0.x noVNC surface is unauthenticated and meant for numeric loopback on a machine you control.
 > No Chrome-containing image, image tar, or public layer cache is distributed unless separate
 > redistribution authorization is documented.

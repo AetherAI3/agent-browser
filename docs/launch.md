@@ -1,10 +1,11 @@
 # Agent Browser launch kit
 
-> **Status: published.** The repository is public, `v0.1.0-rc.1` is tagged and released, and the
-> client is on npm as [`aether-browser`](https://www.npmjs.com/package/aether-browser). The copy
-> below is ready to post; each channel is still a deliberate, separate action. Chrome-containing
-> images, archives, and public layer caches remain prohibited without separately documented
-> redistribution authorization.
+> This kit accompanies `v0.2.1`. The repository is public, and the Node and Python clients are
+> released version for version as [`aether-browser` on npm](https://www.npmjs.com/package/aether-browser)
+> and [`aether-browser` on PyPI](https://pypi.org/project/aether-browser/). Publishing the copy below
+> to any outside channel remains a deliberate, separate action. Chrome-containing images,
+> archives, and public layer caches remain prohibited without separately documented redistribution
+> authorization.
 
 ## Shared facts
 
@@ -13,29 +14,32 @@
 - Positioning: Self-hosted Google Chrome for AI agents with bounded API control, structured snapshots,
   a live local noVNC view, and human takeover of the same session.
 - Quickstart: `docker compose up --build` on Linux Docker Engine.
-- Client: `npm install aether-browser` — TypeScript client and CLI, zero runtime dependencies.
+- Clients: `npm install aether-browser` or `pip install aether-browser` — matching TypeScript and
+  Python clients and CLIs, both with zero runtime dependencies.
+- MCP: both clients serve the same nine-tool MCP interface over stdio with `aether-browser mcp`.
 - Repository: <https://github.com/AetherAI3/agent-browser>
-- Release: `v0.1.0-rc.1` (prerelease, source-only).
-- Distribution: Apache-2.0 Aether-owned source; locally built container for v0.1.
+- Release: `v0.2.1` (stable patch, source-only runtime distribution).
+- Distribution: Apache-2.0 Aether-owned source; locally built container for the v0.x line.
 - Boundary: no hosted-service claim, no remote noVNC claim, and no Chrome-containing image, image
   tar, or public layer-cache publication unless separate redistribution authorization is documented.
 
 ## GitHub Release
 
-### Agent Browser v0.1.0-rc.1 — See what your agent sees
+### Agent Browser v0.2.1 — See what your agent sees
 
 Agent Browser runs one headed Google Chrome Stable session that an agent controls through a small JSON API
 while a human watches or takes over the same local display through noVNC.
 
-The v0.1 source release includes:
+The v0.2.1 source release includes:
 
 - explicit session ownership, expiry, vision budget, and idempotent cleanup;
 - navigate, snapshot, click, type, scroll, and allowlisted key actions;
 - bounded readable text, accessibility state, viewport metadata, and PNG snapshots;
 - numeric-loopback API and noVNC defaults;
-- SSRF, redirect, DNS-rebinding, browser-egress, and WebRTC escape controls; and
-- Docker Compose quickstart plus rootless isolated acceptance tooling; and
-- a published TypeScript client and CLI, `aether-browser` on npm, with zero runtime dependencies.
+- SSRF, redirect, DNS-rebinding, browser-egress, and WebRTC escape controls;
+- Docker Compose quickstart plus rootless isolated acceptance tooling;
+- matching zero-dependency TypeScript and Python clients on npm and PyPI; and
+- matching nine-tool MCP servers over stdio, with the session ID kept inside the client.
 
 Start on Linux with:
 
@@ -43,7 +47,7 @@ Start on Linux with:
 docker compose up --build
 ```
 
-and drive it with `npm install aether-browser`.
+and drive it from Node, Python, a CLI, or an MCP client.
 
 Then open `http://127.0.0.1:6080/vnc.html` and follow the README API example. Review the security
 model before changing any listener or authority setting. Commit-bound verification, artifact
@@ -59,11 +63,13 @@ noVNC.
 
 It returns structured text and accessibility state as well as screenshots, owns one explicit
 session with cleanup and budgets, and keeps both user-facing listeners on numeric loopback by
-default. The v0.1 API intentionally excludes shell access, arbitrary JavaScript, raw DevTools,
+default. The v0.x API intentionally excludes shell access, arbitrary JavaScript, raw DevTools,
 credential import, and a hosted control plane.
 
-The source release runs with `docker compose up --build` on Linux. I would value feedback on the
-API contract, the local human-takeover workflow, and the documented security boundary.
+The source release runs with `docker compose up --build` on Linux. Matching zero-dependency Node
+and Python clients can also serve the browser through a nine-tool MCP interface. I would value
+feedback on the API contract, the local human-takeover workflow, and the documented security
+boundary.
 
 ## Reddit
 
@@ -74,8 +80,8 @@ view of that same headed session. It exposes bounded structured state plus scree
 narrow set of browser actions, and makes session ownership and cleanup explicit.
 
 The project is designed for local, self-hosted use. API and noVNC bind to numeric loopback by
-default, and the README calls out what v0.1 does not provide. The Linux quickstart is one Docker
-Compose command, with the API example and commit-bound release evidence in the repository.
+default, and the README calls out what the v0.x line does not provide. The Linux quickstart is one
+Docker Compose command, with the API example and commit-bound release evidence in the repository.
 
 I am especially interested in concrete feedback on SDK ergonomics, accessibility snapshot shape,
 and the observer/controller boundary.
@@ -106,16 +112,17 @@ security documentation, rootless acceptance tooling, and exact-commit release ev
 **Agent Browser — See what your agent sees.**
 
 Self-hosted Chrome with bounded API control, structured snapshots, and a live local noVNC view
-for human takeover of the same session. Linux quickstart: `docker compose up --build`.
+for human takeover of the same session. Node, Python, and MCP clients included. Linux quickstart:
+`docker compose up --build`.
 
 ## Publication checklist
 
 - Owner explicitly approved publication.
 - Repository visibility and release action match that approval.
-- Exact-main CI, trusted-runner acceptance, SBOM, vulnerability, quickstart, and cleanup evidence
-  are green and linked.
-- Demo, poster, and 1280×640 social preview come from the accepted commit and their SHA-256 values
-  are recorded.
+- Exact-main CI, hosted release acceptance, SBOM, vulnerability, quickstart, and cleanup evidence
+  are green and linked before the release tag is created.
+- Demo provenance and limits are documented; demo, poster, and 1280×640 social-preview SHA-256
+  values are recorded without attributing the separate capture to a hosted release run.
 - Release notes name known limitations and do not imply hosted operation or remote noVNC safety.
 - Third-party notices and source-distribution obligations were reviewed for the exact candidate.
 - No Chrome-containing image, image tar, or public layer cache is attached unless separately

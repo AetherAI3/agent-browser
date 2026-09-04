@@ -122,7 +122,7 @@ class SessionRequest(EmptyRequest):
 class HealthResponse(ClosedModel):
     api_version: ApiVersion = API_VERSION
     status: Literal["ok"] = "ok"
-    version: Literal["0.2.0"] = __version__
+    version: Literal["0.2.1"] = __version__
     browser_ready: bool
     session_active: bool
     slots_available: int = Field(ge=0, le=1)

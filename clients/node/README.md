@@ -117,8 +117,8 @@ rejects unknown fields.
 
 ## Status
 
-`0.2.0` tracks Agent Browser `v0.2.0` and its `api_version: "v1"` contract, and is released
-version for version with the PyPI client. Issues and design discussion are welcome on
+`0.2.1` tracks Agent Browser `v0.2.1` and its `api_version: "v1"` contract, and is versioned in
+lockstep with the PyPI client. Issues and design discussion are welcome on
 [the repository](https://github.com/AetherAI3/agent-browser/issues).
 
 Apache-2.0 · [Aether AI](https://github.com/AetherAI3)
