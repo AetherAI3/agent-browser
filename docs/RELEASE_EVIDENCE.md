@@ -37,7 +37,7 @@ Unless stated otherwise, every row below comes from `release-evidence`
 | README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33860164841/job/100982560774)) |
 | Demo | separate provenance record | [`docs/DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md) records the demo media, current checksums, available public provenance, and independently verifiable limits |
 | Third-party review | Chrome terms, exact package/credits, notices, and redistribution decision | `Google Chrome 152.0.7977.82`, package `google-chrome-stable 152.0.7977.82-1`, `amd64`; `installed-notices.tar.gz` (`13a2948fd99f10e6445101d631d02a53b43c3e3676db458947ca543739ee7b79`); distribution is source-only |
-| Repository state | visibility and open-PR review | Public, with strict protected `main`, required `quality`/`unit`/`security` checks, linear history, conversation resolution, and force-push/deletion disabled; no open pull request or unresolved review thread blocks release |
+| Repository state | visibility and branch protection | Public, with strict protected `main`, required `quality`/`unit`/`security` checks, linear history, conversation resolution, and force-push/deletion disabled; release requires no unrelated open pull request or unresolved review thread |
 
 ## Strict repository gate
 
@@ -75,8 +75,8 @@ inputs. Confirmation runs still rebuild and bind their own resulting image ID, p
 nonce to each exact checkout.
 
 The successful evidence-commit attestation is committed at
-[`release/evidence/manifest.json`](../release/evidence/manifest.json). The exact-tag attestation is
-published as a release asset.
+[`release/evidence/manifest.json`](../release/evidence/manifest.json). The exact-tag attestation
+belongs on the GitHub release as an attached asset and is a publication gate.
 
 ## Vulnerability posture
 
