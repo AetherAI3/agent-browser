@@ -2,17 +2,16 @@
 
 ## Status
 
-`assets/demo.gif` (and the matching `assets/demo.mp4`) is a **continuous screen recording of a real
-Agent Browser run** — not a montage of stills. It was captured with `ffmpeg -f x11grab` from the
-same X display the session's Chrome window was drawn on, which is the display the noVNC view
-serves. Every state change visible in the recording was produced by the runtime in this repository:
-the typing and the sign-in click came from `POST /browser/interact`, the page changes came from the
-session's own navigation, and the takeover keystrokes were delivered to that same display while the
-session stayed open. Nothing in the recording is re-enacted, spliced, or sped up.
+`assets/demo.gif` (and the matching `assets/demo.mp4`) is presented as an **18-second continuous
+screen recording of an Agent Browser run**, not as the older montage of stills. The capture record
+says `ffmpeg -f x11grab` recorded the same X display used by the session's browser and noVNC view.
+It attributes the typing and sign-in click to `POST /browser/interact`, the page changes to the
+session's own navigation, and the takeover keystrokes to that display while the session stayed
+open. The retained public evidence and its independently verifiable limits are stated below.
 
-The recording shows the v0.1 claim end to end: an agent drives the session over the API, reaches a
-two-factor prompt it has no way to answer, stops; a human types into the *same* live session; the
-agent then calls `snapshot` and continues against the page the human unblocked.
+The recording illustrates the product's human-takeover flow end to end: an agent drives the
+session over the API, reaches a two-factor prompt it has no way to answer, stops; a human types into
+the displayed session; the agent then calls `snapshot` and continues against the unblocked page.
 
 ## How the recording was made
 
@@ -22,7 +21,7 @@ agent then calls `snapshot` and continues against the page the human unblocked.
 | Agent actions | `POST /browser/session/create`, `/browser/navigate`, `/browser/interact` (type, click), `/browser/snapshot` against the API in `src/agent_browser/` |
 | Human takeover | Pointer and keystrokes delivered to the same X display the session owns, while the session remained active |
 | Target site | A local fixture served on `http://127.0.0.1:8080` (sign-in → two-factor → dashboard), allowed through the project's own `AGENT_BROWSER_TEST_MODE` / `AGENT_BROWSER_TEST_ORIGINS` fixture path so the loopback destination policy stays otherwise intact |
-| Browser binary | Chromium 141.0.7390.37, launched through Patchright by the unmodified session manager. The published Docker image installs Google Chrome Stable instead; the recording host already had a Chromium build at the Chrome path, so this run used it. The runtime, API, policy, and session code are unmodified. |
+| Browser binary | Chromium 141.0.7390.37, launched through Patchright by the unmodified session manager. The source-built Compose image installs Google Chrome Stable instead; the recording host already had a Chromium build at the Chrome path, so this run used it. The runtime, API, policy, and session code are unmodified. |
 | Post-processing | Caption bar composited below the frame (`drawtext`); frames, timing, and content unaltered |
 | Captions | Derived from the run's own action log, timestamped against the recording |
 
@@ -34,7 +33,24 @@ agent then calls `snapshot` and continues against the page the human unblocked.
   quickstart installs Chrome.
 - The caption bar is an editorial overlay added after capture. The browser frame above it is
   untouched.
+- The repository does not retain the raw capture or timestamped action log, so a third party cannot
+  independently re-verify the capture operator's single-take and no-replay assertions from the
+  published files alone.
 - The social preview (`assets/social-preview.png`) is a prepared brand asset and is not runtime proof.
+
+## Public provenance and integrity
+
+The current media first entered public history in [pull request #61](https://github.com/AetherAI3/agent-browser/pull/61),
+whose head was `da3db74f1c9fa3d3867e660bc52936c0cf181db3` and whose merge commit is
+`0bb66239232d038a49323dc6310557b3c89939b7`. That change touched the README, this evidence file,
+and demo media only; its executable runtime tree therefore matches its `v0.1.0` parent. The public
+record does not bind the capture itself to an exact source commit or hosted capture job.
+
+SHA-256 values for the currently committed media:
+
+- `assets/demo.gif`: `db9e3fb9a378b5c8c28556224577b78e72a834188259e0f93c06cb15d5c99e13`
+- `assets/demo.mp4`: `f9c5445717e2768d4f116d295bd009d6b8406dfdb7875f9b338d9b9476ada7f8`
+- `assets/demo-poster.png`: `6a716cb68e9867bdbc0aeee3bb7fa74d9def8e6208f87c998fba2e9b137e2b46`
 
 ## Superseded: the v0.1.0 release-candidate media
 
@@ -91,7 +107,7 @@ background, which is the expected outcome of the `popup-bounded` check: the popu
 bounded rather than silently allowed, and the owned page is restored to the foreground before the
 click returns.
 
-## What acceptance proved
+### What the superseded v0.1 acceptance proved
 
 `acceptance.json` reports PASS over 33 checks bound to the same image ID, covering:
 
@@ -107,7 +123,7 @@ click returns.
 - visual binding: `same-display-color-proof`;
 - teardown: `idempotent-end`, `process-cleanup`, `profile-cleanup`, `pod-cleanup`.
 
-## Social-preview provenance
+### Superseded v0.1 social-preview provenance
 
 The committed logo is `assets/agent-browser-logo.png`, SHA-256
 `bb3a63b2a54e3a48dbdc77605f3511d5211ae5b695bac831ca689c7bc593b4e2`. It is rebuilt from the
@@ -125,7 +141,7 @@ styling rather than a captured session readout. `docs/assets/` holds byte-identi
 copies of both images so a `/docs` Pages build cannot escape its source root. The card depicts
 the product contract but is not itself a record of a live run.
 
-## Observation record
+### Superseded v0.1 observation record
 
 - Automated acceptance proved: every check listed above, executed against the exact image inside a
   network-isolated pod.
@@ -138,9 +154,10 @@ the product contract but is not itself a record of a live run.
   three stills, H.264 encoding at CRF 20, and removal of the encoder creation timestamp. No crop,
   speed change, redaction, or retouching was applied to the frame content.
 
-## Limitations
+### Superseded v0.1 limitations
 
-- The video is generated stills, not a continuous recording, and proves nothing on its own.
+- The superseded v0.1 video was generated from stills, not a continuous recording, and proved
+  nothing on its own.
 - This evidence covers a single local, network-isolated container run. It does not demonstrate
   hosted or multi-tenant operation, remote network security, sustained load, or availability.
 - Chrome inventory and notice evidence are for transparency and do not grant redistribution
@@ -148,9 +165,10 @@ the product contract but is not itself a record of a live run.
 - Rebuilding the same source later may resolve a newer Chrome Stable version than the one recorded
   here.
 
-## Integrity check
+### Superseded v0.1 integrity check
 
-The committed assets were re-hashed after copying and match `generated-assets/SHA256SUMS` from the
-run. The poster and video were visually reviewed, the social preview is exactly 1280x640, and the
-release verifier is re-run at the commit that contains these assets. Evidence produced at a
-different commit is not valid for this candidate.
+At the time of the v0.1 acceptance record, those assets were re-hashed after copying and matched
+`generated-assets/SHA256SUMS` from the run. The poster and video were visually reviewed, the social
+preview was exactly 1280x640, and the release verifier was re-run at the commit that contained
+them. Those historical hashes do not describe the current continuous media; its hashes are listed
+in [Public provenance and integrity](#public-provenance-and-integrity).

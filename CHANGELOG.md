@@ -6,6 +6,17 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-04
+
+### Fixed
+
+- Reconciled the public demo record: current continuous media and the superseded v0.1 still
+  montage are now clearly scoped, with checksums and the limits of the retained public provenance.
+- Updated the launch kit, repository metadata, and release copy to cover the Python client, PyPI,
+  and both MCP servers instead of describing the old v0.1.0 release candidate.
+- Prepared the patch release so its tag is created only after the runtime, evidence-rebind, and
+  manifest commits close; this keeps the tagged source archive and release evidence coherent.
+
 ## [0.2.0] - 2026-09-03
 
 ### Added
@@ -95,7 +106,8 @@ release and it carries the final naming throughout.
   fixed high-or-higher findings, not an absence of vulnerabilities; see
   [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) for the full posture.
 
-[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.1
 [0.2.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.0
 [0.1.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.1.0
 [0.1.0-rc.1]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.1.0-rc.1

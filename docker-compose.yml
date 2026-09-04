@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: agent-browser:0.2.0
+    image: agent-browser:0.2.1
     # Host networking makes the numeric loopback binds below refer to the host
     # loopback interface. Do not replace this with bridge port publishing:
     # websockify would then need a container-interface listener reachable by peers.

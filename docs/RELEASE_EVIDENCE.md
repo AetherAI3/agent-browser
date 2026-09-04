@@ -34,7 +34,7 @@ Unless stated otherwise, every row below comes from `release-evidence`
 | Rootless image build | image ID and base digest | Image ID `sha256:847628dd478a68ebbfc2d39e501507fdd91c792f70c09c73b9ce119f6fd581a5`; base `docker.io/library/python@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84`; final image runs as `USER 10001:10001` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926/job/100826413501)) |
 | Isolated acceptance | exact image ID, network proof, cleanup proof | `acceptance.json` = PASS over 33 checks against the same image ID, including `isolated-pod-network-none`, `same-pod-namespace`, `loopback-listener-proof`, `same-display-color-proof`, `process-cleanup`, `profile-cleanup`, and `pod-cleanup` ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926/job/100827682025)) |
 | README quickstart | fresh-directory reproduction | `quickstart.json` = PASS for `docker compose up --build --detach` at the same commit ([job](https://github.com/AetherAI3/agent-browser/actions/runs/33809057926/job/100826413124)) |
-| Demo | link to `DEMO_EVIDENCE.md` | [`docs/DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md) records the generated media, its provenance, and its limits |
+| Demo | link to `DEMO_EVIDENCE.md` | [`docs/DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md) records the demo media, the available public provenance, and its limits |
 | Third-party review | Chrome terms, exact package/credits, notices, and redistribution decision | `Google Chrome 152.0.7977.82`, package `google-chrome-stable 152.0.7977.82-1`, `amd64`; `installed-notices.tar.gz` (`13a2948fd99f10e6445101d631d02a53b43c3e3676db458947ca543739ee7b79`, byte-identical to the 0.1.0 bundle); distribution is source-only |
 | Repository state | visibility and open-PR review | Public, with branch protection on `main` (strict, linear history; force-push and deletion disabled); no open pull request or unresolved review thread blocks this release |
 
@@ -58,19 +58,20 @@ Passing gate checks at the runtime commit: `required-core-files`, `required-sour
 Two commit IDs appear in this evidence and they mean different things:
 
 - **Runtime commit** `22e1433369cc4d15cc00c6c19193de2c4a9ded21` is the code under test. Every
-  runtime proof — the image build, isolated acceptance, quickstart, and the committed demo media —
-  was produced from it.
+  workflow-produced runtime proof — the image build, isolated acceptance, and quickstart — was
+  produced from it. The committed demo media is a separate capture; see
+  [`docs/DEMO_EVIDENCE.md`](DEMO_EVIDENCE.md).
 - **Evidence commit** is the runtime commit plus the evidence artifacts themselves. The gate
   enforces that the runtime commit is an ancestor of the evidence checkout and that the entire
   difference between them is confined to `assets/demo.mp4`, `assets/demo-poster.png`,
   `docs/DEMO_EVIDENCE.md`, `docs/RELEASE_EVIDENCE.md`, and `release/evidence/manifest.json`. No
   executable source changed after the runtime proofs.
 
-Because the evidence commit adds files to the build context, the confirmation run that closes the
-gate necessarily builds a different image ID than the runtime image recorded above. Its acceptance
-suite re-runs the same 33 checks against that image with a freshly generated proof colour and
-nonce, which is why the visual binding is evidence of a real run rather than a fixed fixture. The
-committed demo media stays the capture it was made from and is not replaced by a later run.
+The runtime-image allowlist in `.dockerignore` excludes the evidence-only paths, so the evidence
+commit does not intentionally change the image inputs. The confirmation run still rebuilds and
+re-runs the same 33 checks, binding its own resulting image ID, proof colour, and nonce to that
+checkout. The committed demo media stays the separate capture it was made from and is not replaced
+by a later run.
 
 The machine-readable attestation from the closing run is committed at
 [`release/evidence/manifest.json`](../release/evidence/manifest.json).
