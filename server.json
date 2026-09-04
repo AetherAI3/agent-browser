@@ -1,0 +1,87 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.AetherAI3/agent-browser",
+  "description": "Self-hosted Chrome for AI agents, with a live noVNC view a human can take over.",
+  "version": "0.2.2",
+  "websiteUrl": "https://aetherai3.github.io/agent-browser/",
+  "repository": {
+    "url": "https://github.com/AetherAI3/agent-browser",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "aether-browser",
+      "version": "0.2.2",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "valueHint": "mcp",
+          "isRequired": true,
+          "description": "Start the Agent Browser MCP server on stdio."
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "AGENT_BROWSER_URL",
+          "isRequired": false,
+          "description": "Base URL of your Agent Browser server. Defaults to http://127.0.0.1:8092."
+        },
+        {
+          "name": "AGENT_BROWSER_CONTROLLER_TOKEN",
+          "isRequired": false,
+          "isSecret": true,
+          "description": "Controller token, if the server runs authenticated."
+        },
+        {
+          "name": "AGENT_BROWSER_OBSERVER_TOKEN",
+          "isRequired": false,
+          "isSecret": true,
+          "description": "Observer token for read-only health and snapshot calls."
+        }
+      ]
+    },
+    {
+      "registryType": "pypi",
+      "identifier": "aether-browser",
+      "version": "0.2.2",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "valueHint": "mcp",
+          "isRequired": true,
+          "description": "Start the Agent Browser MCP server on stdio."
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "AGENT_BROWSER_URL",
+          "isRequired": false,
+          "description": "Base URL of your Agent Browser server. Defaults to http://127.0.0.1:8092."
+        },
+        {
+          "name": "AGENT_BROWSER_CONTROLLER_TOKEN",
+          "isRequired": false,
+          "isSecret": true,
+          "description": "Controller token, if the server runs authenticated."
+        },
+        {
+          "name": "AGENT_BROWSER_OBSERVER_TOKEN",
+          "isRequired": false,
+          "isSecret": true,
+          "description": "Observer token for read-only health and snapshot calls."
+        }
+      ]
+    }
+  ]
+}

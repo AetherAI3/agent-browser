@@ -270,7 +270,7 @@ cleanup. The API and the live view are different interfaces to that shared resou
 independent automation paths. See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 > [!IMPORTANT]
-> **Agent Browser v0.2.1 is source-first and self-hosted.** It is not a hosted service, and
+> **Agent Browser v0.2.2 is source-first and self-hosted.** It is not a hosted service, and
 > the v0.x noVNC surface is unauthenticated and meant for numeric loopback on a machine you control.
 > No Chrome-containing image, image tar, or public layer cache is distributed unless separate
 > redistribution authorization is documented.

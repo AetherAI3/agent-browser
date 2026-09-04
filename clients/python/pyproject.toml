@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 # tests/test_packaging.py fails the build if the two ever drift apart.
 [project]
 name = "aether-browser"
-version = "0.2.1"
+version = "0.2.2"
 description = "Client and CLI for Agent Browser by Aether AI: drive one self-hosted Chrome session over a closed HTTP API and watch or take over that same session through noVNC."
 readme = "README.md"
 requires-python = ">=3.10"

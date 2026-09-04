@@ -61,7 +61,7 @@ class _FakeBrowser:
     def health(self, **_: Any) -> dict[str, Any]:
         return {
             "status": "ok",
-            "version": "0.2.1",
+            "version": "0.2.2",
             "browser_ready": True,
             "session_active": False,
             "slots_available": 1,

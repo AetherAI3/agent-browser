@@ -25,7 +25,7 @@ def test_version_contract_is_consistent() -> None:
         slots_available=1,
         started_at=datetime.now(UTC),
     )
-    assert __version__ == "0.2.1"
+    assert __version__ == "0.2.2"
     assert response.version == __version__
     assert response.api_version == API_VERSION == "v1"
 

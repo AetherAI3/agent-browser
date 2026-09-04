@@ -411,7 +411,7 @@ def create_app(
 
     application = FastAPI(
         title="Agent Browser",
-        version="0.2.1",
+        version="0.2.2",
         docs_url=None,
         redoc_url=None,
         openapi_url=None,

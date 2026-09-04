@@ -1,6 +1,6 @@
 # Agent Browser launch kit
 
-> This kit accompanies `v0.2.1`. The repository is public, and the Node and Python clients are
+> This kit accompanies `v0.2.2`. The repository is public, and the Node and Python clients are
 > released version for version as [`aether-browser` on npm](https://www.npmjs.com/package/aether-browser)
 > and [`aether-browser` on PyPI](https://pypi.org/project/aether-browser/). Publishing the copy below
 > to any outside channel remains a deliberate, separate action. Chrome-containing images,
@@ -18,19 +18,19 @@
   Python clients and CLIs, both with zero runtime dependencies.
 - MCP: both clients serve the same nine-tool MCP interface over stdio with `aether-browser mcp`.
 - Repository: <https://github.com/AetherAI3/agent-browser>
-- Release: `v0.2.1` (stable patch, source-only runtime distribution).
+- Release: `v0.2.2` (stable patch, source-only runtime distribution).
 - Distribution: Apache-2.0 Aether-owned source; locally built container for the v0.x line.
 - Boundary: no hosted-service claim, no remote noVNC claim, and no Chrome-containing image, image
   tar, or public layer-cache publication unless separate redistribution authorization is documented.
 
 ## GitHub Release
 
-### Agent Browser v0.2.1 — See what your agent sees
+### Agent Browser v0.2.2 — See what your agent sees
 
 Agent Browser runs one headed Google Chrome Stable session that an agent controls through a small JSON API
 while a human watches or takes over the same local display through noVNC.
 
-The v0.2.1 source release includes:
+The v0.2.2 source release includes:
 
 - explicit session ownership, expiry, vision budget, and idempotent cleanup;
 - navigate, snapshot, click, type, scroll, and allowlisted key actions;

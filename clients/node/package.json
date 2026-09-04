@@ -1,6 +1,7 @@
 {
   "name": "aether-browser",
-  "version": "0.2.1",
+  "version": "0.2.2",
+  "mcpName": "io.github.AetherAI3/agent-browser",
   "description": "Client and CLI for Agent Browser by Aether AI: drive one self-hosted Chrome session over a closed HTTP API and watch or take over that same session through noVNC.",
   "license": "Apache-2.0",
   "author": "Aether AI",
