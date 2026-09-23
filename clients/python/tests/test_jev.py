@@ -129,7 +129,10 @@ class JevTransportTests(unittest.TestCase):
             {"usage": {"input_tokens": True, "output_tokens": 0, "cost": 0}},
         ):
             with self.subTest(changed=changed), self.assertRaises(JevDecisionError):
-                OpenRouterJev("secret", post=lambda *_: {**valid, **changed}).choose(
+                provider = OpenRouterJev(
+                    "secret", post=lambda *_, changed=changed: {**valid, **changed}
+                )
+                provider.choose(
                     goal="Find source",
                     page_url="https://example.com",
                     title="Example",
@@ -219,9 +222,9 @@ class AgentHandoffTests(unittest.TestCase):
                     live,  # type: ignore[arg-type]
                     goal="Find something",
                     initial_page=page("https://example.com"),
-                    options_for=lambda _: [NavigationOption(url, "Candidate")],
+                    options_for=lambda _, url=url: [NavigationOption(url, "Candidate")],
                     excerpt_for=lambda _: "",
-                    selected_model=lambda h: received.append(h),
+                    selected_model=lambda h, received=received: received.append(h),
                 )
                 self.assertEqual(received[0].reason, reason)
                 self.assertEqual(len(provider.calls), 1)
