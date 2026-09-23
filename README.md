@@ -225,6 +225,56 @@ Python 3.10 or newer, anywhere that can reach the server. Same CLI as the npm pa
 
 See [`clients/python/README.md`](clients/python/README.md).
 
+## Optional Jev web decisions (Python)
+
+The Python client has an opt-in `aether_browser.jev` layer for **Jev → your selected model**.
+Jev reads a caller-selected text excerpt and chooses between up to three caller-approved URLs,
+handoff, or human takeover. The browser navigates only to a URL the caller supplied, and its
+normal destination checks still apply. On handoff, **your callback** receives the current page
+evidence and Jev's request IDs, token counts, and costs; your application invokes its chosen
+reasoning model to write, analyze, or continue browsing. Jev returns decisions, not prose or
+visual judgments, so screenshots and complex page interactions belong to that selected model or
+the human watching the live browser.
+
+```python
+import os
+
+from aether_browser import AgentBrowser, session
+from aether_browser.jev import HumanTakeover, JevWebAgent, NavigationOption, OpenRouterJev
+
+browser = AgentBrowser(controller_token=os.environ["AGENT_BROWSER_CONTROLLER_TOKEN"])
+with session(browser) as live:
+    first_page = live.navigate("https://example.com")
+    result = JevWebAgent(OpenRouterJev(os.environ["OPENROUTER_API_KEY"])).run(
+        live,
+        goal="Read the site's documentation",
+        initial_page=first_page,
+        options_for=lambda page: (
+            [NavigationOption("https://example.com/docs", "Official documentation")]
+            if page["final_url"] == "https://example.com/"
+            else []
+        ),
+        excerpt_for=lambda page: page["readable_text"][:6000],
+        selected_model=lambda handoff: your_model(handoff),  # Supply your own model callback.
+    )
+    if isinstance(result, HumanTakeover):
+        print("Take control at", result.view_url)
+        input("Press Enter when the human is done to close this session: ")
+    else:
+        print(result)
+```
+
+The example's `your_model` is an application-defined function, not part of this package. The
+`excerpt_for` callback explicitly chooses text sent to OpenRouter, and `options_for` explicitly
+chooses candidate URLs. Never return private page content or signed URLs unless your application
+intends to send them to that provider. The OpenRouter key stays in the calling process; the
+browser server does not store it. No Jev request occurs unless you call this optional layer.
+If Jev fails or returns an invalid decision, the selected-model callback receives a handoff
+with `reason="jev_unavailable"` and the browser takes no additional action. Recognized authentication
+or payment pages prompt human takeover before Jev receives their text. The session remains owned
+by your code; keep it open while the human takes over. See [`docs/JEV.md`](docs/JEV.md) for
+the complete contract and limitations.
+
 ## What makes it different
 
 - **One session, two participants.** The agent acts through JSON. You watch the same display, and
@@ -302,7 +352,7 @@ and credential injection are excluded from the public core. Provenance status is
 ## What it does not do
 
 - No hosted cloud service, cloud control plane, or production remote-hosting claim.
-- No bundled LLM, account system, dashboard, credential vault, or credential injection.
+- No bundled LLM or default model calls, account system, dashboard, credential vault, or credential injection.
 - No CAPTCHA bypass, anti-detection guarantee, stealth claim, or proxy rotation.
 - No arbitrary JavaScript, shell, filesystem, upload, clipboard, download, or raw CDP API.
 - No multi-session pool, ATS integration, trading integration, or brokerage behavior.
