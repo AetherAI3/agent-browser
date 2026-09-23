@@ -48,6 +48,18 @@ Connection settings fall back to `AGENT_BROWSER_URL`, `AGENT_BROWSER_CONTROLLER_
 `AGENT_BROWSER_OBSERVER_TOKEN`, so `AgentBrowser()` works with no arguments in a configured
 environment.
 
+## Optional Jev decision layer
+
+`aether_browser.jev` can make bounded navigation choices before handing page evidence to the
+model chosen by your application. It uses a separate OpenRouter key, runs in the calling process,
+and sends only the text you select in `excerpt_for` plus the goal, page URL/title, and up to three
+URLs supplied by `options_for`. It never sends screenshots to Jev. Jev cannot generate answers or
+invent browser actions. Your `selected_model` callback does the reasoning and generation after
+Jev chooses `handoff` or is unavailable. Human takeover leaves the browser session open.
+
+See the [root README example](../../README.md#optional-jev-web-decisions-python) and
+[contract and limitations](../../docs/JEV.md).
+
 ## Two roles, kept separate
 
 The server splits authority, and this client keeps that split visible in your code. The observer
