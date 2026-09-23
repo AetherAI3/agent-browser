@@ -14,7 +14,7 @@ import urllib.error
 import urllib.request
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar, cast
 from urllib.parse import urlsplit
 
 from ._client import AgentBrowserError, Session
@@ -107,7 +107,7 @@ class DecisionProvider(Protocol):
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
-    def redirect_request(  # type: ignore[override]
+    def redirect_request(
         self,
         request: Any,
         fp: Any,
@@ -259,8 +259,8 @@ class OpenRouterJev:
             receipt=JevReceipt(
                 provider_request_id=request_id,
                 model=JEV_RESOLVED_MODEL,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
+                input_tokens=cast(int, input_tokens),
+                output_tokens=cast(int, output_tokens),
                 cost_usd=float(cost),
             ),
         )

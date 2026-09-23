@@ -20,10 +20,13 @@ from aether_browser.jev import (
 )
 
 
-def page(url: str, *, text: str = "Readable result", nodes: list[dict[str, str]] | None = None
-         ) -> dict[str, Any]:
+def page(
+    url: str, *, text: str = "Readable result", nodes: list[dict[str, str]] | None = None
+) -> dict[str, Any]:
     return {
-        "final_url": url, "title": "Example", "readable_text": text,
+        "final_url": url,
+        "title": "Example",
+        "readable_text": text,
         "accessibility": {"nodes": nodes or []},
         "screenshot_base64": "SHOULD_NOT_BE_SENT",
     }
@@ -79,11 +82,13 @@ class JevTransportTests(unittest.TestCase):
             criteria = request["questions"]["next_step"]["criteria"]
             self.assertEqual(set(criteria), {"handoff", "takeover", "navigate_1"})
             return {
-                "id": "decision-1", "model": "typesafe/jev-1.13-20260917",
+                "id": "decision-1",
+                "model": "typesafe/jev-1.13-20260917",
                 "provider": "TypeSafe",
                 "answers": {
                     "next_step": {
-                        "type": "choice", "choice": "navigate_1",
+                        "type": "choice",
+                        "choice": "navigate_1",
                         "probabilities": {"handoff": 0.1, "takeover": 0.0, "navigate_1": 0.9},
                         "confidence": 0.9,
                     },
@@ -92,7 +97,9 @@ class JevTransportTests(unittest.TestCase):
             }
 
         choice = OpenRouterJev("secret", timeout=3.0, post=post).choose(
-            goal="Find source", page_url="https://example.com", title="Example",
+            goal="Find source",
+            page_url="https://example.com",
+            title="Example",
             excerpt="Summary selected by the caller",
             options=[NavigationOption("https://example.com/source", "Primary source")],
         )
@@ -104,11 +111,16 @@ class JevTransportTests(unittest.TestCase):
 
     def test_rejects_nonchoice_model_drift_and_invalid_usage(self) -> None:
         valid = {
-            "id": "decision-1", "model": "typesafe/jev-1.13-20260917",
-            "answers": {"next_step": {
-                "type": "choice", "choice": "handoff",
-                "probabilities": {"handoff": 1.0, "takeover": 0.0}, "confidence": 1.0,
-            }},
+            "id": "decision-1",
+            "model": "typesafe/jev-1.13-20260917",
+            "answers": {
+                "next_step": {
+                    "type": "choice",
+                    "choice": "handoff",
+                    "probabilities": {"handoff": 1.0, "takeover": 0.0},
+                    "confidence": 1.0,
+                }
+            },
             "usage": {"input_tokens": 1, "output_tokens": 0, "cost": 0.0},
         }
         for changed in (
@@ -118,8 +130,11 @@ class JevTransportTests(unittest.TestCase):
         ):
             with self.subTest(changed=changed), self.assertRaises(JevDecisionError):
                 OpenRouterJev("secret", post=lambda *_: {**valid, **changed}).choose(
-                    goal="Find source", page_url="https://example.com", title="Example",
-                    excerpt="", options=[],
+                    goal="Find source",
+                    page_url="https://example.com",
+                    title="Example",
+                    excerpt="",
+                    options=[],
                 )
 
     def test_rejects_credentials_and_non_http_navigation(self) -> None:
@@ -134,9 +149,12 @@ class AgentHandoffTests(unittest.TestCase):
         second = "https://example.com/source"
         live = FakeSession({second: page(second, text="Source text")})
         observed: list[WebHandoff] = []
-        result = JevWebAgent(provider).run(
+        result = JevWebAgent(
+            provider
+        ).run(
             live,  # type: ignore[arg-type]
-            goal="Find the primary source", initial_page=page("https://example.com"),
+            goal="Find the primary source",
+            initial_page=page("https://example.com"),
             options_for=lambda p: (
                 [NavigationOption(second, "Primary source")] if p["final_url"] != second else []
             ),
@@ -157,7 +175,8 @@ class AgentHandoffTests(unittest.TestCase):
         called: list[WebHandoff] = []
         result = JevWebAgent(provider).run(
             live,  # type: ignore[arg-type]
-            goal="Sign in", initial_page=page(
+            goal="Sign in",
+            initial_page=page(
                 "https://example.com/other",
                 nodes=[{"role": "textbox", "name": "One-time code"}],
             ),
@@ -177,7 +196,8 @@ class AgentHandoffTests(unittest.TestCase):
         received: list[WebHandoff] = []
         JevWebAgent(provider).run(
             live,  # type: ignore[arg-type]
-            goal="Summarize", initial_page=page("https://example.com"),
+            goal="Summarize",
+            initial_page=page("https://example.com"),
             options_for=lambda _: [NavigationOption("https://example.org", "Alternate")],
             excerpt_for=lambda _: "",
             selected_model=lambda h: received.append(h),
@@ -197,7 +217,8 @@ class AgentHandoffTests(unittest.TestCase):
                 received: list[WebHandoff] = []
                 JevWebAgent(provider).run(
                     live,  # type: ignore[arg-type]
-                    goal="Find something", initial_page=page("https://example.com"),
+                    goal="Find something",
+                    initial_page=page("https://example.com"),
                     options_for=lambda _: [NavigationOption(url, "Candidate")],
                     excerpt_for=lambda _: "",
                     selected_model=lambda h: received.append(h),
@@ -212,7 +233,8 @@ class AgentHandoffTests(unittest.TestCase):
         live = FakeSession({second: page(second)})
         JevWebAgent(provider, max_navigations=1).run(
             live,  # type: ignore[arg-type]
-            goal="Research", initial_page=page("https://example.com"),
+            goal="Research",
+            initial_page=page("https://example.com"),
             options_for=lambda _: [NavigationOption(second, "Source")],
             excerpt_for=lambda _: "",
             selected_model=lambda _: None,

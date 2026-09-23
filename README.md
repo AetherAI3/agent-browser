@@ -249,9 +249,11 @@ with session(browser) as live:
         live,
         goal="Read the site's documentation",
         initial_page=first_page,
-        options_for=lambda page: [
-            NavigationOption("https://example.com/docs", "Official documentation")
-        ] if page["final_url"] == "https://example.com/" else [],
+        options_for=lambda page: (
+            [NavigationOption("https://example.com/docs", "Official documentation")]
+            if page["final_url"] == "https://example.com/"
+            else []
+        ),
         excerpt_for=lambda page: page["readable_text"][:6000],
         selected_model=lambda handoff: your_model(handoff),  # Supply your own model callback.
     )
