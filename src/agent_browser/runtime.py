@@ -152,6 +152,14 @@ class BrowserSnapshot:
     viewport: Viewport
 
 
+@dataclass(frozen=True, slots=True)
+class BrowserViewFrame:
+    """Image-only local viewing frame; no page text or accessibility tree."""
+
+    screenshot_base64: str
+    viewport: Viewport
+
+
 class BrowserAdapter(Protocol):
     """The complete browser capability surface owned by a session."""
 
@@ -167,6 +175,9 @@ class BrowserAdapter(Protocol):
 
     async def snapshot(self) -> BrowserSnapshot:
         """Capture bounded structured state and a PNG screenshot."""
+
+    async def capture_view_frame(self) -> BrowserViewFrame:
+        """Capture an image-only frame without consuming model vision budget."""
 
     async def click(
         self,
@@ -460,16 +471,7 @@ class PatchrightBrowserAdapter:
         try:
             async with asyncio.timeout(self._action_timeout):
                 state = await self._extract_page_state(page)
-                screenshot = await page.screenshot(
-                    type="png",
-                    full_page=False,
-                    animations="disabled",
-                    caret="hide",
-                    timeout=int(self._action_timeout * 1000),
-                )
-                encoded = base64.b64encode(bytes(screenshot)).decode("ascii")
-                if len(encoded) > MAX_SCREENSHOT_BASE64_CHARS:
-                    raise BrowserOperationError("The browser snapshot exceeded its size limit.")
+                encoded = await self._capture_png(page)
                 return BrowserSnapshot(
                     page=state,
                     screenshot_base64=encoded,
@@ -477,6 +479,31 @@ class PatchrightBrowserAdapter:
                 )
         except BaseException as error:
             self._raise_operation_error(error, "Snapshot failed.")
+
+    async def capture_view_frame(self) -> BrowserViewFrame:
+        """Read pixels only; the RC relay never needs DOM or form values."""
+        page = self._require_page()
+        try:
+            async with asyncio.timeout(self._action_timeout):
+                return BrowserViewFrame(
+                    screenshot_base64=await self._capture_png(page),
+                    viewport=self._viewport,
+                )
+        except BaseException as error:
+            self._raise_operation_error(error, "View capture failed.")
+
+    async def _capture_png(self, page: Any) -> str:
+        screenshot = await page.screenshot(
+            type="png",
+            full_page=False,
+            animations="disabled",
+            caret="hide",
+            timeout=int(self._action_timeout * 1000),
+        )
+        encoded = base64.b64encode(bytes(screenshot)).decode("ascii")
+        if len(encoded) > MAX_SCREENSHOT_BASE64_CHARS:
+            raise BrowserOperationError("The browser frame exceeded its size limit.")
+        return encoded
 
     async def click(
         self,

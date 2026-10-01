@@ -116,6 +116,11 @@ export class Session {
     return this.browser._post('/browser/snapshot', { session_id: this.id }, 'observer', options)
   }
 
+  /** Capture pixels only for a local relay; does not consume model vision budget. */
+  viewFrame(options = {}) {
+    return this.browser._post('/browser/view-frame', { session_id: this.id }, 'observer', options)
+  }
+
   /**
    * Click a selector or an x/y point. Exactly one of the two is allowed by the server.
    * @param {{ selector?: string, x?: number, y?: number }} target

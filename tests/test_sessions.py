@@ -14,6 +14,7 @@ from agent_browser.sessions import (
     SessionExpiredError,
     SessionManager,
     SessionNotFoundError,
+    ViewFrameRateLimitedError,
     VisionBudgetExhaustedError,
 )
 
@@ -144,6 +145,32 @@ async def test_snapshot_budget_and_sequence_are_atomic(tmp_path: Path) -> None:
     assert captured[0].vision_steps_used == 1
     assert captured[0].vision_steps_remaining == 0
     assert factory.adapters[0].calls.count(("snapshot",)) == 1
+    await manager.shutdown()
+
+
+@pytest.mark.asyncio
+async def test_view_frame_is_image_only_rate_limited_and_keeps_model_budget(tmp_path: Path) -> None:
+    factory = FakeAdapterFactory()
+    clock = FakeClock()
+    manager = build_manager(factory, clock, tmp_path)
+    created = await manager.create(1)
+
+    first = await manager.capture_view_frame(created.session_id)
+    assert first.frame.screenshot_base64
+    assert first.frame.viewport.width == 1280
+    assert not hasattr(first.frame, "page")
+    with pytest.raises(ViewFrameRateLimitedError):
+        await manager.capture_view_frame(created.session_id)
+    assert factory.adapters[0].calls.count(("view_frame",)) == 1
+
+    clock.advance(1.0)
+    await manager.capture_view_frame(created.session_id)
+    snapshot = await manager.snapshot(created.session_id)
+    assert snapshot.sequence == 1
+    assert snapshot.vision_steps_used == 1
+    assert snapshot.vision_steps_remaining == 0
+    clock.advance(1.0)
+    await manager.capture_view_frame(created.session_id)
     await manager.shutdown()
 
 

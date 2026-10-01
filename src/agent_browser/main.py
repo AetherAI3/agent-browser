@@ -39,6 +39,7 @@ from agent_browser.models import (
     NavigateResponse,
     SnapshotRequest,
     SnapshotResponse,
+    ViewFrameResponse,
 )
 from agent_browser.runtime import (
     BrowserLaunchError,
@@ -56,6 +57,7 @@ from agent_browser.sessions import (
     SessionExpiredError,
     SessionManager,
     SessionNotFoundError,
+    ViewFrameRateLimitedError,
     VisionBudgetExhaustedError,
 )
 
@@ -575,6 +577,17 @@ def create_app(
             vision_steps_remaining=result.vision_steps_remaining,
         )
 
+    @application.post("/browser/view-frame", response_model=ViewFrameResponse)
+    async def view_frame(payload: SnapshotRequest, request: Request) -> ViewFrameResponse:
+        await require(request, RequiredAuthority.OBSERVER)
+        result = await session_manager.capture_view_frame(payload.session_id)
+        return ViewFrameResponse(
+            session_id=result.session_id,
+            screenshot_base64=result.frame.screenshot_base64,
+            viewport=result.frame.viewport,
+            captured_at=result.captured_at,
+        )
+
     @application.post("/browser/interact", response_model=InteractResponse)
     async def interact(payload: InteractRequest, request: Request) -> InteractResponse:
         await require(request, RequiredAuthority.CONTROLLER)
@@ -617,6 +630,8 @@ def _known_fault(error: Exception) -> _ApiFault | None:
         return _ApiFault(ErrorCode.SESSION_EXPIRED, 410)
     if isinstance(error, VisionBudgetExhaustedError):
         return _ApiFault(ErrorCode.VISION_BUDGET_EXHAUSTED, 409)
+    if isinstance(error, ViewFrameRateLimitedError):
+        return _ApiFault(ErrorCode.VIEW_FRAME_RATE_LIMITED, 429, retry_after_seconds=1)
     if isinstance(error, InvalidBrowserInteractionError):
         return _ApiFault(ErrorCode.INVALID_INTERACTION, 400)
     if isinstance(error, (BrowserLaunchError, BrowserNotReadyError)):
@@ -661,6 +676,7 @@ _ERROR_MESSAGES: dict[ErrorCode, str] = {
     ErrorCode.SESSION_NOT_FOUND: "Session was not found.",
     ErrorCode.SESSION_EXPIRED: "Session expired.",
     ErrorCode.VISION_BUDGET_EXHAUSTED: "The snapshot budget is exhausted.",
+    ErrorCode.VIEW_FRAME_RATE_LIMITED: "View frame capture is rate limited.",
     ErrorCode.INVALID_URL: "The navigation URL is invalid.",
     ErrorCode.DESTINATION_BLOCKED: "The navigation destination is blocked.",
     ErrorCode.INVALID_INTERACTION: "The request or interaction is invalid.",

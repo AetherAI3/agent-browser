@@ -39,6 +39,7 @@ export type ErrorCode =
   | 'SESSION_NOT_FOUND'
   | 'SESSION_EXPIRED'
   | 'VISION_BUDGET_EXHAUSTED'
+  | 'VIEW_FRAME_RATE_LIMITED'
   | 'INVALID_URL'
   | 'DESTINATION_BLOCKED'
   | 'INVALID_INTERACTION'
@@ -114,6 +115,15 @@ export interface SnapshotResponse {
   vision_steps_remaining: number
 }
 
+export interface ViewFrameResponse {
+  api_version: 'v1'
+  status: 'view_frame'
+  session_id: string
+  screenshot_base64: string
+  viewport: Viewport
+  captured_at: string
+}
+
 export interface InteractResponse {
   api_version: 'v1'
   status: 'interacted'
@@ -181,6 +191,7 @@ export declare class Session {
 
   navigate(url: string, options?: RequestOptions): Promise<NavigateResponse>
   snapshot(options?: RequestOptions): Promise<SnapshotResponse>
+  viewFrame(options?: RequestOptions): Promise<ViewFrameResponse>
   click(
     target: { selector: string; x?: never; y?: never } | { x: number; y: number; selector?: never },
     options?: RequestOptions,

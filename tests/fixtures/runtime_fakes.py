@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from agent_browser.models import AccessibilityNode, AccessibilitySnapshot, Viewport
-from agent_browser.runtime import BrowserPageState, BrowserSnapshot
+from agent_browser.runtime import BrowserPageState, BrowserSnapshot, BrowserViewFrame
 
 
 class FakeClock:
@@ -77,6 +77,13 @@ class FakeAdapter:
             raise self.snapshot_error
         return BrowserSnapshot(
             page=self.page_state,
+            screenshot_base64=base64.b64encode(b"png").decode("ascii"),
+            viewport=Viewport(width=1280, height=720),
+        )
+
+    async def capture_view_frame(self) -> BrowserViewFrame:
+        self.calls.append(("view_frame",))
+        return BrowserViewFrame(
             screenshot_base64=base64.b64encode(b"png").decode("ascii"),
             viewport=Viewport(width=1280, height=720),
         )

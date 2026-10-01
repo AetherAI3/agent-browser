@@ -42,6 +42,7 @@ Release acceptance instead consumes the immutable image ID from the preceding ex
 | `POST /browser/session/create` | no | yes |
 | `POST /browser/navigate` | no | yes |
 | `POST /browser/snapshot` | yes | yes |
+| `POST /browser/view-frame` | yes | yes |
 | `POST /browser/interact` | no | yes |
 | `POST /browser/session/end` | no | yes |
 
@@ -54,6 +55,7 @@ Release acceptance instead consumes the immutable image ID from the preceding ex
 - Accessibility snapshot: 500 flattened nodes.
 - Encoded PNG screenshot: 14,000,000 base64 characters.
 - Vision budget: 1–100 snapshots, default 25.
+- Image-only view capture: at most one frame per second per session; 429 includes `Retry-After: 1`.
 - Coordinates: 0–4,095; scroll delta: -10,000–10,000.
 - Capacity retry guidance: 1–300 seconds.
 
@@ -68,6 +70,8 @@ Release acceptance instead consumes the immutable image ID from the preceding ex
 `POST /browser/navigate` accepts `session_id` and an HTTP(S) URL. Navigation policy is evaluated separately from schema validation and rejects credentials, unsafe schemes, blocked address classes, unsafe redirects, and DNS rebinding. Responses contain the final URL, bounded title and readable text, a flattened bounded accessibility snapshot, and a UTC timestamp.
 
 `POST /browser/snapshot` atomically consumes one vision step and increments the session sequence. It returns bounded structured state, a base64 PNG, viewport metadata, counters, and capture time.
+
+`POST /browser/view-frame` accepts the same owned session ID and returns only a bounded base64 PNG, viewport, and capture time. It does not extract page text, accessibility, URL, or form values and does not consume the model vision budget. Pixels can still show what the human typed; a relay must keep frames out of model context and logs. It is a loopback API for an authenticated relay; it does not make the unauthenticated noVNC port safe to expose. The relay must enforce the remote owner/session grant separately.
 
 ## Interaction
 
