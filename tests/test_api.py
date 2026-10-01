@@ -137,6 +137,52 @@ async def test_all_six_routes_follow_the_closed_v1_contract(tmp_path: Path) -> N
 
 
 @pytest.mark.asyncio
+async def test_view_frame_is_image_only_and_rate_limited(tmp_path: Path) -> None:
+    factory = FakeAdapterFactory()
+    clock = FakeClock()
+    required: list[RequiredAuthority] = []
+
+    async def record_authority(
+        _authorization: str | None,
+        level: RequiredAuthority,
+    ) -> None:
+        required.append(level)
+
+    app = create_app(
+        manager=make_manager(factory, clock, tmp_path),
+        authority=record_authority,
+        navigation_policy=allow_navigation,
+        utc_clock=clock.utc_now,
+    )
+    async with api_client(app, raise_app_exceptions=True) as client:
+        response = await client.post("/browser/session/create", json={"max_vision_steps": 1})
+        created = response.json()
+        session_id = created["session_id"]
+        frame = await client.post("/browser/view-frame", json={"session_id": session_id})
+        assert frame.status_code == 200
+        assert set(frame.json()) == {
+            "api_version",
+            "status",
+            "session_id",
+            "screenshot_base64",
+            "viewport",
+            "captured_at",
+        }
+        assert frame.json()["status"] == "view_frame"
+        assert frame.headers["cache-control"] == "no-store"
+        assert required[-1] is RequiredAuthority.OBSERVER
+
+        limited = await client.post("/browser/view-frame", json={"session_id": session_id})
+        assert limited.status_code == 429
+        assert limited.json()["error"]["code"] == "VIEW_FRAME_RATE_LIMITED"
+        assert limited.headers["retry-after"] == "1"
+
+        snapshot = await client.post("/browser/snapshot", json={"session_id": session_id})
+        assert snapshot.status_code == 200
+        assert snapshot.json()["vision_steps_remaining"] == 0
+
+
+@pytest.mark.asyncio
 async def test_capacity_unknown_budget_and_validation_errors_are_stable(
     tmp_path: Path,
 ) -> None:

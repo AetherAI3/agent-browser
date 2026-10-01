@@ -94,6 +94,16 @@ test('routes reads to the observer token and writes to the controller token', as
   assert.equal(calls[1].headers.authorization, 'Bearer ctl')
 })
 
+test('view frames use observer authority and the image-only route', async () => {
+  const { browser, calls } = client([{ body: CREATED }, { body: { status: 'view_frame' } }], {
+    observerToken: 'obs',
+    controllerToken: 'ctl',
+  })
+  await (await browser.createSession()).viewFrame()
+  assert.ok(calls[1].url.endsWith('/browser/view-frame'))
+  assert.equal(calls[1].headers.authorization, 'Bearer obs')
+})
+
 test('falls back to the only token supplied', async () => {
   const { browser, calls } = client([{ body: { status: 'ok' } }], { controllerToken: 'ctl' })
   await browser.health()

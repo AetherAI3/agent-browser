@@ -131,6 +131,16 @@ class TestRequests(unittest.TestCase):
         self.assertTrue(calls[1]["url"].endswith("/browser/snapshot"))
         self.assertEqual(calls[1]["headers"]["authorization"], "Bearer obs")
 
+    def test_view_frame_is_an_observer_read(self) -> None:
+        browser, calls = client(
+            [{"body": CREATED}, {"body": {"status": "view_frame"}}],
+            observer_token=OBSERVER,
+            controller_token=CONTROLLER,
+        )
+        browser.create_session().view_frame()
+        self.assertTrue(calls[1]["url"].endswith("/browser/view-frame"))
+        self.assertEqual(calls[1]["headers"]["authorization"], "Bearer obs")
+
     def test_falls_back_to_the_only_token_supplied(self) -> None:
         browser, calls = client([{"body": {"status": "ok"}}], controller_token=CONTROLLER)
         browser.health()

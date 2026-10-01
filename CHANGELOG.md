@@ -6,6 +6,13 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- An observer-authorized, image-only `POST /browser/view-frame` endpoint and matching Python/Node
+  client methods for a future authenticated RC relay. Capture is limited to one frame per second
+  per owned session, omits page text and form values, and does not consume model vision steps.
+  The local noVNC port remains loopback-only and must not be tunneled.
+
 ## [0.2.2] - 2026-09-04
 
 ### Added

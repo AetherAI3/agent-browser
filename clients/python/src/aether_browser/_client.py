@@ -157,6 +157,12 @@ class Session:
         """Capture bounded page state plus a base64 PNG. Consumes exactly one vision step."""
         return self.browser._post("/browser/snapshot", {"session_id": self.id}, "observer", timeout)
 
+    def view_frame(self, *, timeout: float | None = None) -> dict[str, Any]:
+        """Capture pixels only for a local relay; does not consume model vision budget."""
+        return self.browser._post(
+            "/browser/view-frame", {"session_id": self.id}, "observer", timeout
+        )
+
     def click(
         self,
         *,

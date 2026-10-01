@@ -205,6 +205,15 @@ async def test_create_app_uses_real_remote_authority_and_ip_policy(tmp_path: Pat
             headers=observer,
             json={"session_id": created.json()["session_id"]},
         )
+        frame = await client.post(
+            "/browser/view-frame",
+            headers=observer,
+            json={"session_id": created.json()["session_id"]},
+        )
+        missing_frame = await client.post(
+            "/browser/view-frame",
+            json={"session_id": created.json()["session_id"]},
+        )
 
     assert missing.status_code == 401
     assert missing.headers["www-authenticate"] == "Bearer"
@@ -214,6 +223,8 @@ async def test_create_app_uses_real_remote_authority_and_ip_policy(tmp_path: Pat
     assert blocked.status_code == 403
     assert blocked.json()["error"]["code"] == "DESTINATION_BLOCKED"
     assert snapshot.status_code == 200
+    assert frame.status_code == 200
+    assert missing_frame.status_code == 401
 
 
 @pytest.mark.asyncio

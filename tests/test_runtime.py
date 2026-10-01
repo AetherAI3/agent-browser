@@ -256,6 +256,19 @@ async def test_snapshot_extracts_bounded_state_without_page_script() -> None:
 
 
 @pytest.mark.asyncio
+async def test_view_frame_captures_only_pixels_without_reading_page_state() -> None:
+    page = FakePage(readable_text="credential canary", aria_text='- textbox "Password"')
+    adapter, _page = launched_adapter(page)
+
+    frame = await adapter.capture_view_frame()
+
+    assert base64.b64decode(frame.screenshot_base64) == b"png-bytes"
+    assert frame.viewport.width == 1280
+    assert [call[0] for call in page.calls] == ["screenshot"]
+    assert not hasattr(frame, "page")
+
+
+@pytest.mark.asyncio
 async def test_downloads_are_cancelled_and_extra_pages_are_closed() -> None:
     adapter, _page = launched_adapter()
     download = FakeDownload()

@@ -24,6 +24,7 @@ from agent_browser.runtime import (
     BrowserOperationError,
     BrowserPageState,
     BrowserSnapshot,
+    BrowserViewFrame,
 )
 
 DEFAULT_IDLE_TIMEOUT_SECONDS = 300.0
@@ -32,6 +33,7 @@ DEFAULT_CLEANUP_TIMEOUT_SECONDS = 15.0
 DEFAULT_REAPER_RESOLUTION_SECONDS = 1.0
 DEFAULT_TOMBSTONE_LIMIT = 256
 DEFAULT_VIEW_URL = "http://127.0.0.1:6080/vnc.html"
+VIEW_FRAME_MIN_INTERVAL_SECONDS = 1.0
 
 AdapterFactory = Callable[[Path], BrowserAdapter | Awaitable[BrowserAdapter]]
 UtcClock = Callable[[], datetime]
@@ -79,6 +81,12 @@ class VisionBudgetExhaustedError(SessionError):
     """The session has no remaining snapshot steps."""
 
 
+class ViewFrameRateLimitedError(SessionError):
+    """Image-only viewing is capped at one frame per second per session."""
+
+    retry_after_seconds = 1
+
+
 @dataclass(frozen=True, slots=True)
 class SessionInfo:
     session_id: UUID
@@ -104,6 +112,13 @@ class SnapshotResult:
     captured_at: datetime
     vision_steps_used: int
     vision_steps_remaining: int
+
+
+@dataclass(frozen=True, slots=True)
+class ViewFrameResult:
+    session_id: UUID
+    frame: BrowserViewFrame
+    captured_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,6 +157,7 @@ class _SessionRecord:
     max_vision_steps: int
     vision_steps_used: int = 0
     sequence: int = 0
+    last_view_frame_monotonic: float | None = None
     expiry_task: asyncio.Task[None] | None = None
 
 
@@ -332,6 +348,30 @@ class SessionManager:
                 vision_steps_used=record.vision_steps_used,
                 vision_steps_remaining=record.max_vision_steps - record.vision_steps_used,
             )
+
+    async def capture_view_frame(self, session_id: UUID) -> ViewFrameResult:
+        """Capture only pixels for a local relay, without a model evidence step."""
+        async with self._lock:
+            record = await self._active_record_locked(session_id)
+            now = self._monotonic_clock()
+            last = record.last_view_frame_monotonic
+            if last is not None and now - last < VIEW_FRAME_MIN_INTERVAL_SECONDS:
+                raise ViewFrameRateLimitedError("View frame capture is rate limited.")
+            adapter = self._adapter(record)
+            try:
+                frame = await self._await_before_absolute_deadline_locked(
+                    record,
+                    adapter.capture_view_frame,
+                )
+            except BaseException as error:
+                if record.state is SessionState.EXPIRED:
+                    raise
+                await self._handle_adapter_failure_locked(record, error)
+                raise
+            record.last_view_frame_monotonic = self._monotonic_clock()
+            captured_at = self._aware_now()
+            self._touch(record)
+            return ViewFrameResult(session_id=session_id, frame=frame, captured_at=captured_at)
 
     async def interact(self, request: InteractRequest) -> InteractionResult:
         async with self._lock:

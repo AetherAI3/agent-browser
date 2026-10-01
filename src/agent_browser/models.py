@@ -74,6 +74,7 @@ class ErrorCode(StrEnum):
     SESSION_NOT_FOUND = "SESSION_NOT_FOUND"
     SESSION_EXPIRED = "SESSION_EXPIRED"
     VISION_BUDGET_EXHAUSTED = "VISION_BUDGET_EXHAUSTED"
+    VIEW_FRAME_RATE_LIMITED = "VIEW_FRAME_RATE_LIMITED"
     INVALID_URL = "INVALID_URL"
     DESTINATION_BLOCKED = "DESTINATION_BLOCKED"
     INVALID_INTERACTION = "INVALID_INTERACTION"
@@ -211,6 +212,22 @@ class SnapshotResponse(ClosedModel):
     captured_at: datetime
     vision_steps_used: int = Field(ge=1, le=100)
     vision_steps_remaining: int = Field(ge=0, le=99)
+
+    _captured_at_is_utc = field_validator("captured_at")(_validate_utc)
+
+
+class ViewFrameResponse(ClosedModel):
+    """Pixel-only response for a local, authenticated viewer relay."""
+
+    api_version: ApiVersion = API_VERSION
+    status: Literal["view_frame"] = "view_frame"
+    session_id: UUID
+    screenshot_base64: Annotated[
+        str,
+        StringConstraints(min_length=1, max_length=MAX_SCREENSHOT_BASE64_CHARS),
+    ]
+    viewport: Viewport
+    captured_at: datetime
 
     _captured_at_is_utc = field_validator("captured_at")(_validate_utc)
 
