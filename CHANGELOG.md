@@ -6,10 +6,12 @@ All notable changes to Agent Browser are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-10-01
+
 ### Added
 
 - An observer-authorized, image-only `POST /browser/view-frame` endpoint and matching Python/Node
-  client methods for a future authenticated RC relay. Capture is limited to one frame per second
+  client methods for the authenticated Aether RC browser relay. Capture is limited to one frame per second
   per owned session, omits page text and form values, and does not consume model vision steps.
   The local noVNC port remains loopback-only and must not be tunneled.
 
@@ -130,7 +132,8 @@ release and it carries the final naming throughout.
   fixed high-or-higher findings, not an absence of vulnerabilities; see
   [`docs/RELEASE_EVIDENCE.md`](docs/RELEASE_EVIDENCE.md) for the full posture.
 
-[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/AetherAI3/agent-browser/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.3
 [0.2.2]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.2
 [0.2.1]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.1
 [0.2.0]: https://github.com/AetherAI3/agent-browser/releases/tag/v0.2.0
