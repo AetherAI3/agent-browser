@@ -23,7 +23,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
-  "fastapi==0.141.1",
+  "fastapi==0.142.2",
   "httpx==0.28.1",
   "patchright==1.62.2",
   "pydantic==2.13.5",
