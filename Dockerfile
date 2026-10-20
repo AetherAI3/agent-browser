@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bookworm@sha256:528257d48c1da0dcecc2e725d1ae34498d60c965f1241e39cd6a85a8859bdf84
+FROM python:3.15-slim-bookworm@sha256:2a41267d9de9d358f77a1de356e0f16ecba8d39827855be0ce9ef4792edce402
 
 LABEL org.opencontainers.image.title="Agent Browser" \
       org.opencontainers.image.version="0.2.3" \
